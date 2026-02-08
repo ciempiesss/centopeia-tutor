@@ -55,13 +55,13 @@ const QUICK_COMMANDS: QuickCommand[] = [
     shortcut: 'Q',
   },
   {
-    id: 'interview',
-    command: '/interview',
-    label: 'Simular Entrevista',
-    description: 'Modo entrevista QA',
-    icon: Briefcase,
+    id: 'random',
+    command: '/random',
+    label: 'Tema al Azar',
+    description: 'Aprende algo nuevo',
+    icon: Dice5,
     color: '#ff6b6b',
-    shortcut: 'I',
+    shortcut: 'R',
   },
   {
     id: 'micro',
@@ -178,16 +178,43 @@ export function TerminalHome({ onCommand, onStartInterview, selectedPath }: Term
     return 'Buenas noches';
   };
 
+  const getWelcomeMessage = () => {
+    if (!selectedPath) {
+      return {
+        title: '¿Qué quieres aprender hoy?',
+        subtitle: 'Selecciona un path abajo o explora libremente',
+      };
+    }
+    
+    const hour = currentTime.getHours();
+    const greetings = {
+      morning: ['Buenos días', '¡Arriba que hay que codear!', '¿Café y código?'],
+      afternoon: ['Buenas tardes', '¿Productivo el día?', 'Seguimos aprendiendo'],
+      evening: ['Buenas noches', '¿Código nocturno?', 'Nunca es tarde para aprender'],
+    };
+    
+    const timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+    const greeting = greetings[timeOfDay][Math.floor(Math.random() * greetings[timeOfDay].length)];
+    
+    return {
+      title: `${greeting}`,
+      subtitle: `Path activo: ${selectedPath.title} (${selectedPath.skills.length} skills)`,
+    };
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header con saludo */}
+      {/* Header con saludo inteligente */}
       <div className="border border-hacker-border rounded-xl p-4 bg-hacker-bgSecondary/50">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-hacker-textMuted text-sm">{getGreeting()}</p>
             <h2 className="text-xl font-bold text-hacker-text">
-              ¿Qué quieres aprender hoy?
+              {getWelcomeMessage().title}
             </h2>
+            <p className="text-sm text-hacker-textDim mt-1">
+              {getWelcomeMessage().subtitle}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-2xl font-mono text-hacker-primary">

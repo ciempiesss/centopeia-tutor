@@ -7,6 +7,7 @@ import { configCommand } from './config';
 import { microCommand } from '../../../core/audhd/AntiParalysis';
 import { practiceCommand } from './practice';
 import { quizCommand } from './quiz';
+import { randomCommand } from './random';
 
 export interface CommandContext {
   sessionId?: string;
@@ -40,6 +41,8 @@ export const commandRegistry: CommandRegistry = {
   '/configuracion': configCommand,
   '/micro': microCommand,
   '/paso': microCommand,
+  '/random': randomCommand,
+  '/aleatorio': randomCommand,
   '/hint': async () => 'Usa el comando /practice para ejercicios con pistas incluidas.',
   '/pista': async () => 'Usa el comando /practice para ejercicios con pistas incluidas.',
 };
