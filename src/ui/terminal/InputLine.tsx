@@ -22,20 +22,29 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
     const timer = setTimeout(() => {
       if (!isDisabled && inputRef.current) {
         inputRef.current.focus();
+        console.log('[InputLine] Focused on mount');
       }
-    }, 100);
+    }, 150);
     return () => clearTimeout(timer);
   }, [isDisabled]);
 
   // Keep focus unless disabled (with debounce for mobile)
   useEffect(() => {
-    if (!isDisabled && inputRef.current) {
+    if (!isDisabled && inputRef.current && document.activeElement !== inputRef.current) {
       const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 50);
+        console.log('[InputLine] Re-focused, active element was:', document.activeElement?.tagName);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [isDisabled, placeholder]); // Re-focus when placeholder changes (view changes)
+  
+  // Force focus when clicked anywhere in the container
+  const handleContainerClick = useCallback(() => {
+    if (!isDisabled && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isDisabled]);
 
   // Handle keyboard visibility on mobile
   useEffect(() => {
@@ -124,8 +133,9 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
       ref={containerRef}
       className="flex items-center gap-2 px-4 py-3 
                  bg-hacker-bgSecondary border-t border-hacker-border
-                 pb-safe-b" // Safe area for home indicator
+                 pb-safe-b cursor-text" // Safe area for home indicator
       onTouchStart={handleTouchStart}
+      onClick={handleContainerClick}
     >
       {/* Terminal Icon - Touch target sized */}
       <div className={`${TOUCH_TARGET_SIZE} flex items-center justify-center flex-shrink-0`}>

@@ -61,6 +61,7 @@ export function Terminal() {
   const [selectedPath, setSelectedPath] = useState<LearningPath | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const { 
     isActive: isFocusActive, 
@@ -213,6 +214,12 @@ export function Terminal() {
     setMessages(prev => [...prev, userMsg]);
     await saveMessage(userMsg);
     setIsTyping(true);
+    
+    // Safety timeout - auto-unlock input after 10 seconds to prevent getting stuck
+    safetyTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      console.warn('[Safety] Input auto-unlocked after timeout');
+    }, 10000);
 
     try {
       // Check if it's a code block
@@ -249,6 +256,13 @@ export function Terminal() {
             quizGenerator.resetQuiz(currentSession.id);
           }
           setIsTyping(false);
+          return;
+        }
+        
+        // Emergency unlock command
+        if (command === '/unlock') {
+          setIsTyping(false);
+          addAssistantMessage('✅ Input desbloqueado. Si sigues con problemas, recarga la página (F5).');
           return;
         }
         
@@ -307,6 +321,11 @@ export function Terminal() {
         'error'
       );
     } finally {
+      // Clear safety timeout if command completed normally
+      if (safetyTimeoutRef.current) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
       setIsTyping(false);
     }
   }, [addAssistantMessage, currentSession?.id, handleCodeExecution, isCodeBlock, saveMessage, startSprint, stopSprint]);

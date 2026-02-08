@@ -18,10 +18,12 @@ export const helpCommand: CommandHandler = async () => {
 ║  [green]/micro [tarea][/green]    - Modo anti-parálisis                 ║
 ║                                                              ║
 ║  ⚙️  CONFIGURACIÓN                                           ║
+║  [green]/home[/green]              - Volver al inicio                  ║
 ║  [green]/config apikey [key][/green] - Configurar API de Groq          ║
 ║  [green]/config pomodoro 15[/green]  - Minutos de trabajo              ║
 ║  [green]/config break 5[/green]      - Minutos de descanso             ║
 ║  [green]/stats[/green]              - Tus estadísticas                 ║
+║  [green]/unlock[/green]            - Desbloquea input si se atasca    ║
 ║                                                              ║
 ║  ─────────────────────────────────────────────────────────  ║
 ║  COMANDOS DIRECTOS (sin /):                                  ║
