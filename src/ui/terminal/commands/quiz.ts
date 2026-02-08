@@ -1,16 +1,13 @@
 import type { CommandHandler } from './index';
 import { quizGenerator, QUIZ_LIBRARY } from '../../../tools/QuizGenerator';
 
-// Track active quiz sessions
-const activeQuizzes: Map<string, string> = new Map(); // sessionId -> quizId
-
 export const quizCommand: CommandHandler = async (args, context) => {
   const sessionId = context?.sessionId;
   
   // Check for exit command first
   if (args[0] === 'exit' || args[0] === 'quit' || args[0] === 'salir') {
-    if (sessionId && activeQuizzes.has(sessionId)) {
-      activeQuizzes.delete(sessionId);
+    if (sessionId && quizGenerator.isActive(sessionId)) {
+      quizGenerator.resetQuiz(sessionId);
       return `🛑 Quiz cancelado. Puedes iniciar otro con /quiz [tema]`;
     }
     return `No hay ningún quiz activo para cancelar.`;
@@ -19,15 +16,15 @@ export const quizCommand: CommandHandler = async (args, context) => {
   // Check if user is answering a question
   const input = args.join(' ').trim();
   
-  if (sessionId && activeQuizzes.has(sessionId) && input && !input.startsWith('/')) {
+  // Check if user is answering a question in an active quiz
+  if (sessionId && quizGenerator.isActive(sessionId) && input && !input.startsWith('/')) {
     // User is answering a question
-    const quizId = activeQuizzes.get(sessionId)!;
-    const question = quizGenerator.getCurrentQuestion(quizId);
+    const question = quizGenerator.getCurrentQuestion(sessionId);
     
     if (!question) {
       // Quiz completed
-      const results = quizGenerator.getResults(quizId);
-      activeQuizzes.delete(sessionId);
+      const results = quizGenerator.getResults(sessionId);
+      quizGenerator.resetQuiz(sessionId);
       
       if (results) {
         return quizGenerator.generateSummary(results);
@@ -37,7 +34,7 @@ export const quizCommand: CommandHandler = async (args, context) => {
 
     // Parse and submit answer
     const answer = quizGenerator.parseAnswer(input, question);
-    const result = quizGenerator.submitAnswer(quizId, answer);
+    const result = quizGenerator.submitAnswer(sessionId, answer);
 
     // Build response
     let response = '';
@@ -52,8 +49,8 @@ export const quizCommand: CommandHandler = async (args, context) => {
 
     // Next question or finish
     if (result.isLast) {
-      const results = quizGenerator.getResults(quizId);
-      activeQuizzes.delete(sessionId);
+      const results = quizGenerator.getResults(sessionId);
+      quizGenerator.resetQuiz(sessionId);
       
       if (results) {
         response += '\n' + quizGenerator.generateSummary(results);
@@ -103,12 +100,8 @@ export const quizCommand: CommandHandler = async (args, context) => {
     return `[red]Error:[/red] Tema "${topic}" no disponible.\n\nTópicos disponibles: ${Object.keys(QUIZ_LIBRARY).join(', ')}\n\n[dim]Escribe /quiz exit para salir de un quiz activo.[/dim]`;
   }
 
-  // Generate new quiz
-  const quiz = quizGenerator.generateQuiz(topic, 5);
-  
-  if (sessionId) {
-    activeQuizzes.set(sessionId, quiz.id);
-  }
+  // Generate new quiz with sessionId so it can be found later
+  const quiz = quizGenerator.generateQuiz(topic, 5, sessionId);
 
   // Show first question
   const firstQuestion = quiz.questions[0];
@@ -122,10 +115,10 @@ ${quizGenerator.formatQuestion(firstQuestion, 0, quiz.questions.length)}
 
 // Reset quiz (for testing or if stuck)
 export const resetQuiz = (sessionId: string): void => {
-  activeQuizzes.delete(sessionId);
+  quizGenerator.resetQuiz(sessionId);
 };
 
 // Check if there's an active quiz
 export const hasActiveQuiz = (sessionId: string): boolean => {
-  return activeQuizzes.has(sessionId);
+  return quizGenerator.isActive(sessionId);
 };

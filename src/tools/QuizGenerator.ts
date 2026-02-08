@@ -187,11 +187,11 @@ export class QuizGenerator {
   private activeQuizzes: Map<string, QuizSession> = new Map();
 
   // Generate a new quiz
-  generateQuiz(topic: string, questionCount: number = 5): QuizSession {
+  generateQuiz(topic: string, questionCount: number = 5, sessionId?: string): QuizSession {
     const questions = this.selectQuestions(topic, questionCount);
     
     const session: QuizSession = {
-      id: generateId(),
+      id: sessionId || generateId(), // Use sessionId if provided, otherwise generate new
       topic,
       questions,
       currentIndex: 0,
