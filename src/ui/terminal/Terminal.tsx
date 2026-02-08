@@ -244,13 +244,34 @@ export function Terminal() {
         if (command === '/home') {
           setShowHome(true);
           setInterviewMode(false);
+          // Reset any active quiz when going home
+          if (currentSession?.id) {
+            quizGenerator.resetQuiz(currentSession.id);
+          }
           setIsTyping(false);
           return;
         }
         
         const handler = commandRegistry[command];
         
+        // Handle quiz command - ensure input stays enabled
+        if (command === '/quiz') {
+          if (handler) {
+            const response = await handler(args, { sessionId: currentSession?.id });
+            addAssistantMessage(response);
+          } else {
+            addAssistantMessage('Error: Comando /quiz no disponible.');
+          }
+          setIsTyping(false);
+          return;
+        }
+        
         if (handler) {
+          // Skip quiz here - already handled above
+          if (command === '/quiz') {
+            return;
+          }
+          
           // Handle special commands
           if (command === '/focus' || command === '/sprint') {
             const minutes = args[0] ? parseInt(args[0], 10) : 15;

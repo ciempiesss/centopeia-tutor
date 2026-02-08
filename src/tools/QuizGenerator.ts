@@ -282,24 +282,33 @@ export class QuizGenerator {
   // Format quiz for display
   formatQuestion(question: QuizQuestion, index: number, total: number): string {
     let formatted = `
-📝 PREGUNTA ${index + 1}/${total}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${question.question}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
+╔══════════════════════════════════════════════════════════════╗
+║  🎯 QUIZ - PREGUNTA ${index + 1} DE ${total}                            ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+${question.question.split('\n').map(line => `║  ${line.padEnd(56)} ║`).join('\n')}
+║                                                              ║
+╠══════════════════════════════════════════════════════════════╣`;
 
     if (question.options) {
+      formatted += '\n║                                                              ║';
       question.options.forEach((option, i) => {
         const letters = ['A', 'B', 'C', 'D'];
-        formatted += `\n${letters[i]}) ${option}`;
+        const line = `  ${letters[i]}) ${option}`;
+        formatted += `\n║${line.padEnd(62)}║`;
       });
+      formatted += '\n║                                                              ║';
     }
 
     if (question.type === 'fill_blank') {
-      formatted += '\n\n[Responde con la palabra que falta]';
+      formatted += '\n║  [Responde con la palabra que falta]                         ║';
     }
 
-    formatted += '\n\n[dim]Escribe la letra (A, B, C, D) o tu respuesta[/dim]';
+    formatted += `
+╠══════════════════════════════════════════════════════════════╣
+║  [dim]Escribe la letra (A, B, C, D) o tu respuesta[/dim]          ║
+║  [dim]Escribe /quiz exit para cancelar el quiz[/dim]              ║
+╚══════════════════════════════════════════════════════════════╝`;
     
     return formatted;
   }
@@ -347,6 +356,16 @@ ${message}
 ${percentage < 100 ? '[dim]Escribe /learn ' + topic + ' para revisar el tema.[/dim]' : ''}
 ${percentage >= 80 ? '[green]¡Listo para el siguiente nivel![/green]' : ''}
 `;
+  }
+
+  // Reset/cancel a quiz session
+  resetQuiz(sessionId: string): boolean {
+    return this.activeQuizzes.delete(sessionId);
+  }
+
+  // Check if a quiz is active
+  isActive(sessionId: string): boolean {
+    return this.activeQuizzes.has(sessionId);
   }
 }
 

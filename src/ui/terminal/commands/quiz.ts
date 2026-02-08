@@ -7,6 +7,15 @@ const activeQuizzes: Map<string, string> = new Map(); // sessionId -> quizId
 export const quizCommand: CommandHandler = async (args, context) => {
   const sessionId = context?.sessionId;
   
+  // Check for exit command first
+  if (args[0] === 'exit' || args[0] === 'quit' || args[0] === 'salir') {
+    if (sessionId && activeQuizzes.has(sessionId)) {
+      activeQuizzes.delete(sessionId);
+      return `🛑 Quiz cancelado. Puedes iniciar otro con /quiz [tema]`;
+    }
+    return `No hay ningún quiz activo para cancelar.`;
+  }
+  
   // Check if user is answering a question
   const input = args.join(' ').trim();
   
@@ -80,6 +89,8 @@ export const quizCommand: CommandHandler = async (args, context) => {
 ║  3. O escribe la respuesta directamente                      ║
 ║  4. Recibe feedback inmediato                                ║
 ║                                                              ║
+║  [yellow]/quiz exit[/yellow]      - Salir del quiz actual            ║
+║                                                              ║
 ║  [dim]Consejo:[/dim] Los quizzes son de 5 preguntas.            ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -89,7 +100,7 @@ export const quizCommand: CommandHandler = async (args, context) => {
   const topic = args[0].toLowerCase();
   
   if (!QUIZ_LIBRARY[topic]) {
-    return `[red]Error:[/red] Tema "${topic}" no disponible.\n\nTópicos: ${Object.keys(QUIZ_LIBRARY).join(', ')}`;
+    return `[red]Error:[/red] Tema "${topic}" no disponible.\n\nTópicos disponibles: ${Object.keys(QUIZ_LIBRARY).join(', ')}\n\n[dim]Escribe /quiz exit para salir de un quiz activo.[/dim]`;
   }
 
   // Generate new quiz

@@ -20,20 +20,22 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
   // Focus input on mount with mobile-friendly delay
   useEffect(() => {
     const timer = setTimeout(() => {
-      inputRef.current?.focus();
+      if (!isDisabled && inputRef.current) {
+        inputRef.current.focus();
+      }
     }, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isDisabled]);
 
   // Keep focus unless disabled (with debounce for mobile)
   useEffect(() => {
-    if (!isDisabled) {
+    if (!isDisabled && inputRef.current) {
       const timer = setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [isDisabled]);
+  }, [isDisabled, placeholder]); // Re-focus when placeholder changes (view changes)
 
   // Handle keyboard visibility on mobile
   useEffect(() => {
