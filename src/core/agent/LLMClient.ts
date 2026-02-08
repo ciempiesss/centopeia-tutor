@@ -215,7 +215,7 @@ export class LLMClient {
   /**
    * Request no-streaming
    */
-  private async makeRequest(messages: any[]): Promise<string> {
+  private async makeRequest(messages: { role: string; content: string }[]): Promise<string> {
     this.abortController = new AbortController();
 
     try {
@@ -243,7 +243,6 @@ export class LLMClient {
       const data: GroqResponse = await response.json();
       return data.choices[0]?.message?.content || 'Sin respuesta del modelo';
     } catch (error) {
-      console.error('LLM Error:', error);
       throw new Error(`Error de comunicación con el tutor: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
@@ -251,7 +250,7 @@ export class LLMClient {
   /**
    * Formatea mensajes para Groq
    */
-  private formatMessages(messages: TerminalMessage[]): any[] {
+  private formatMessages(messages: TerminalMessage[]): { role: 'user' | 'assistant'; content: string }[] {
     return messages.map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,

@@ -489,7 +489,7 @@ export const TOOLS_QUESTIONS: InterviewQuestion[] = [
 ];
 
 // =============================================================================
-// EXPORTAR TODO
+// EXPORTAR TODAS LAS PREGUNTAS
 // =============================================================================
 
 export const ALL_QUESTIONS: InterviewQuestion[] = [

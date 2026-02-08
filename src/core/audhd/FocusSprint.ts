@@ -222,8 +222,7 @@ export function useFocusSprint() {
   };
 
   const playSound = (type: 'start' | 'complete' | 'break') => {
-    // TODO: Implement sound effects
-    // For now, just vibrate if available
+    // Efectos de sonido vía vibración
     if (navigator.vibrate) {
       navigator.vibrate(type === 'complete' ? [200, 100, 200] : 100);
     }

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centopeia - Executive Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-header: #1a1a2e;
+            --accent-primary: #00ff41;
+            --accent-secondary: #00f0ff;
+            --accent-warning: #ffb000;
+            --accent-danger: #ff4444;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888899;
+            --text-muted: #555566;
+            --border: #2a2a3a;
+            --radius: 12px;
+            --gap: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--gap);
+        }
+
+        /* Header */
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--bg-header) 0%, #252540 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: var(--gap);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .brand-text h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            letter-spacing: 2px;
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .date-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--accent-primary);
+            border-radius: 8px;
+            color: var(--accent-primary);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Streak Banner */
+        .streak-banner {
+            background: linear-gradient(90deg, rgba(0, 255, 65, 0.1), rgba(0, 240, 255, 0.1));
+            border: 1px solid var(--accent-primary);
+            border-radius: var(--radius);
+            padding: 16px 24px;
+            margin-bottom: var(--gap);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .streak-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .streak-number {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            line-height: 1;
+        }
+
+        .streak-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .streak-text strong {
+            color: var(--text-primary);
+            display: block;
+            font-size: 18px;
+        }
+
+        .next-reward {
+            text-align: right;
+        }
+
+        .next-reward span {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .reward-name {
+            color: var(--accent-secondary);
+            font-weight: 600;
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-primary);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--accent-primary);
+        }
+
+        .kpi-card.secondary::before { background: var(--accent-secondary); }
+        .kpi-card.warning::before { background: var(--accent-warning); }
+        .kpi-card.danger::before { background: var(--accent-danger); }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .kpi-change {
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .kpi-change.positive { color: var(--accent-primary); }
+        .kpi-change.negative { color: var(--accent-danger); }
+
+        .sparkline {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.3;
+        }
+
+        /* Charts Section */
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chart-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .chart-container {
+            height: 200px;
+            position: relative;
+        }
+
+        /* Activity Heatmap */
+        .heatmap-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: var(--gap);
+        }
+
+        .heatmap-grid {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .heatmap-week {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .heatmap-day {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            background: var(--bg-header);
+        }
+
+        .heatmap-day.level-1 { background: rgba(0, 255, 65, 0.25); }
+        .heatmap-day.level-2 { background: rgba(0, 255, 65, 0.5); }
+        .heatmap-day.level-3 { background: rgba(0, 255, 65, 0.75); }
+        .heatmap-day.level-4 { background: var(--accent-primary); }
+
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Alerts */
+        .alerts-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .alert-item:last-child {
+            border-bottom: none;
+        }
+
+        .alert-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .alert-icon.success { background: rgba(0, 255, 65, 0.1); }
+        .alert-icon.warning { background: rgba(255, 176, 0, 0.1); }
+        .alert-icon.danger { background: rgba(255, 68, 68, 0.1); }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .alert-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .kpi-value {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="brand">
+                <div class="brand-icon">🐛</div>
+                <div class="brand-text">
+                    <h1>CENTOPEIA</h1>
+                    <p>Dashboard Ejecutivo</p>
+                </div>
+            </div>
+            <div class="date-filter">
+                <span>📅</span>
+                <span>Últimos 7 días ▼</span>
+            </div>
+        </header>
+
+        <!-- Streak Banner -->
+        <div class="streak-banner">
+            <div class="streak-info">
+                <div class="streak-number">12</div>
+                <div class="streak-text">
+                    <strong>🔥 Racha Actual</strong>
+                    días consecutivos estudiando
+                </div>
+            </div>
+            <div class="next-reward">
+                <span>Siguiente logro:</span>
+                <div class="reward-name">🔒 Semana Consistente (15 días)</div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Focus Sprints</div>
+                <div class="kpi-value">23</div>
+                <div class="kpi-change positive">
+                    <span>▲</span> +8 vs semana pasada
+                </div>
+                <canvas class="sparkline" id="spark1" width="80" height="40"></canvas>
+            </div>
+
+            <div class="kpi-card secondary">
+                <div class="kpi-label">Minutos de Estudio</div>
+                <div class="kpi-value">345</div>
+                <div class="kpi-change positive">
+                    <span>▲</span> +120 min
+                </div>
+                <canvas class="sparkline" id="spark2" width="80" height="40"></canvas>
+            </div>
+
+            <div class="kpi-card warning">
+                <div class="kpi-label">Módulos Completados</div>
+                <div class="kpi-value">4</div>
+                <div class="kpi-change positive">
+                    <span>▲</span> +2 este mes
+                </div>
+                <canvas class="sparkline" id="spark3" width="80" height="40"></canvas>
+            </div>
+
+            <div class="kpi-card danger">
+                <div class="kpi-label">Quiz Average</div>
+                <div class="kpi-value">78%</div>
+                <div class="kpi-change negative">
+                    <span>▼</span> -5% vs antes
+                </div>
+                <canvas class="sparkline" id="spark4" width="80" height="40"></canvas>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Progreso Semanal</div>
+                        <div class="chart-subtitle">Minutos de estudio por día</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Distribución por Path</div>
+                        <div class="chart-subtitle">Tiempo invertido por ruta</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="pathChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Heatmap -->
+        <div class="heatmap-card">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">Actividad de los Últimos 6 Meses</div>
+                    <div class="chart-subtitle">Más verde = más actividad</div>
+                </div>
+            </div>
+            <div class="heatmap-grid" id="heatmap"></div>
+            <div class="heatmap-legend">
+                <span>Menos</span>
+                <div class="heatmap-day"></div>
+                <div class="heatmap-day level-1"></div>
+                <div class="heatmap-day level-2"></div>
+                <div class="heatmap-day level-3"></div>
+                <div class="heatmap-day level-4"></div>
+                <span>Más</span>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="alerts-section">
+            <div class="chart-title" style="margin-bottom: 12px;">Notificaciones Recientes</div>
+            
+            <div class="alert-item">
+                <div class="alert-icon success">🏆</div>
+                <div class="alert-content">
+                    <div class="alert-title">¡Racha de 7 días alcanzada!</div>
+                    <div class="alert-time">Hace 2 horas</div>
+                </div>
+            </div>
+
+            <div class="alert-item">
+                <div class="alert-icon warning">⚠️</div>
+                <div class="alert-content">
+                    <div class="alert-title">Focus sprint incompleto ayer</div>
+                    <div class="alert-time">Ayer, 18:30</div>
+                </div>
+            </div>
+
+            <div class="alert-item">
+                <div class="alert-icon danger">🎯</div>
+                <div class="alert-content">
+                    <div class="alert-title">Quiz de QA: 60% (práctica recomendada)</div>
+                    <div class="alert-time">Hace 3 días</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js Configuration
+        Chart.defaults.color = '#888899';
+        Chart.defaults.borderColor = '#2a2a3a';
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+        // Weekly Progress Chart
+        const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+        new Chart(weeklyCtx, {
+            type: 'line',
+            data: {
+                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                datasets: [{
+                    label: 'Minutos',
+                    data: [45, 60, 30, 90, 45, 0, 75],
+                    borderColor: '#00ff41',
+                    backgroundColor: 'rgba(0, 255, 65, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#00ff41'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#2a2a3a' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Path Distribution Chart
+        const pathCtx = document.getElementById('pathChart').getContext('2d');
+        new Chart(pathCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['QA Tester', 'Developer', 'Data Analyst'],
+                datasets: [{
+                    data: [65, 25, 10],
+                    backgroundColor: [
+                        '#00ff41',
+                        '#00f0ff',
+                        '#ffb000'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 16,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+
+        // Sparklines
+        function createSparkline(id, data, color) {
+            const ctx = document.getElementById(id).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [1, 2, 3, 4, 5, 6, 7],
+                    datasets: [{
+                        data: data,
+                        borderColor: color,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, min: 0 }
+                    }
+                }
+            });
+        }
+
+        createSparkline('spark1', [15, 18, 20, 19, 22, 21, 23], '#00ff41');
+        createSparkline('spark2', [200, 250, 280, 300, 320, 330, 345], '#00f0ff');
+        createSparkline('spark3', [2, 2, 2, 3, 3, 3, 4], '#ffb000');
+        createSparkline('spark4', [85, 82, 80, 78, 80, 79, 78], '#ff4444');
+
+        // Generate Heatmap
+        const heatmap = document.getElementById('heatmap');
+        const weeks = 26;
+        const days = 7;
+        
+        for (let w = 0; w < weeks; w++) {
+            const week = document.createElement('div');
+            week.className = 'heatmap-week';
+            
+            for (let d = 0; d < days; d++) {
+                const day = document.createElement('div');
+                day.className = 'heatmap-day';
+                const level = Math.floor(Math.random() * 5);
+                if (level > 0) day.classList.add(`level-${level}`);
+                week.appendChild(day);
+            }
+            
+            heatmap.appendChild(week);
+        }
+    </script>
+</body>
+</html>

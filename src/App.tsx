@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { Terminal } from './ui/terminal/Terminal';
-import { PathSelector } from './ui/components/PathSelector';
-import { LearningPathView } from './ui/components/LearningPathView';
-import { AdaptiveLayout } from './ui/components/AdaptiveLayout';
+import { ErrorBoundary } from './ui/components/ErrorBoundary';
+
+// Lazy loaded components
+const PathSelector = lazy(() => import('./ui/components/PathSelector').then(m => ({ default: m.PathSelector })));
+const LearningPathView = lazy(() => import('./ui/components/LearningPathView').then(m => ({ default: m.LearningPathView })));
+const AdaptiveLayout = lazy(() => import('./ui/components/AdaptiveLayout').then(m => ({ default: m.AdaptiveLayout })));
 import { LEARNING_PATHS, getPathById } from './data/learningPaths';
 import type { LearningPath, MicroModule } from './data/learningPaths';
+import type { UserProfile } from './types';
 import { usePlatform, useKeyboardShortcuts } from './hooks/usePlatform';
 import { CentopeiaDatabase } from './storage/Database';
 import { secureStorage } from './storage/SecureStorage';
@@ -18,8 +22,8 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('terminal');
   const [selectedPath, setSelectedPath] = useState<LearningPath | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
   const { isDesktop } = usePlatform();
 
   // Initialize app
@@ -59,19 +63,23 @@ function App() {
   const handleSelectPath = async (path: LearningPath) => {
     setSelectedPath(path);
     
-    // Save preference
+    // Save preference - map path.id to roleFocus type
     if (userProfile) {
-      userProfile.roleFocus = path.id;
+      const roleMap: Record<string, 'qa_tester' | 'analyst' | 'developer'> = {
+        'qa': 'qa_tester',
+        'developer': 'developer',
+        'data-analyst': 'analyst',
+      };
+      userProfile.roleFocus = roleMap[path.id] || 'developer';
       await db.setUserProfile(userProfile);
     }
     
     setCurrentView('learn');
   };
 
-  const handleStartModule = (module: MicroModule) => {
-    console.log('Starting module:', module);
-    // TODO: Implementar vista de módulo completa
-    alert(`Iniciando módulo: ${module.title}\n\nAquí se abriría la vista de aprendizaje con:\n- Contenido interactivo\n- Editor de código\n- Quizzes\n- Ejercicios prácticos`);
+  const handleStartModule = (module: { id: string; title: string }) => {
+    // Vista de módulo completa pendiente de implementar
+    console.debug('[App] Módulo iniciado:', module.id);
   };
 
   // Render content based on current view
@@ -79,13 +87,15 @@ function App() {
     switch (currentView) {
       case 'paths':
         return (
-          <div className="h-full overflow-y-auto">
-            <PathSelector
-              paths={Object.values(LEARNING_PATHS)}
-              selectedPathId={selectedPath?.id}
-              onSelectPath={handleSelectPath}
-            />
-          </div>
+          <Suspense fallback={<LoadingFallback />}>
+            <div className="h-full overflow-y-auto">
+              <PathSelector
+                paths={Object.values(LEARNING_PATHS)}
+                selectedPathId={selectedPath?.id}
+                onSelectPath={handleSelectPath}
+              />
+            </div>
+          </Suspense>
         );
         
       case 'learn':
@@ -112,10 +122,12 @@ function App() {
           );
         }
         return (
-          <LearningPathView
-            path={selectedPath}
-            onStartModule={handleStartModule}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <LearningPathView
+              path={selectedPath}
+              onStartModule={handleStartModule}
+            />
+          </Suspense>
         );
         
       case 'stats':
@@ -150,8 +162,14 @@ function App() {
     );
   }
 
-  if (!isDesktop) {
-    return (
+  const handleReset = () => {
+    setCurrentView('terminal');
+    window.location.reload();
+  };
+
+  return (
+    <ErrorBoundary onReset={handleReset}>
+      {!isDesktop ? (
       <div className="h-screen w-screen bg-hacker-bg overflow-hidden flex flex-col">
         {/* Header */}
         <header className="bg-hacker-bgSecondary border-b border-hacker-border px-4 py-3">
@@ -198,12 +216,10 @@ function App() {
           </div>
         </nav>
       </div>
-    );
-  }
-
-  return (
-    <AdaptiveLayout>
-      <div className="h-full flex flex-col">
+    ) : (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdaptiveLayout>
+        <div className="h-full flex flex-col">
         {/* Desktop Header */}
         <header className="bg-hacker-bgSecondary border-b border-hacker-border px-6 py-4">
           <div className="flex items-center justify-between">
@@ -244,8 +260,23 @@ function App() {
         <div className="flex-1 overflow-hidden">
           {renderContent()}
         </div>
+        </div>
+      </AdaptiveLayout>
+    </Suspense>
+    )}
+    </ErrorBoundary>
+  );
+}
+
+// Loading fallback component for lazy loaded components
+function LoadingFallback() {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin w-8 h-8 border-4 border-hacker-primary border-t-transparent rounded-full mx-auto mb-4" />
+        <p className="text-hacker-primary font-mono">Cargando...</p>
       </div>
-    </AdaptiveLayout>
+    </div>
   );
 }
 
@@ -267,8 +298,9 @@ function NavButton({
       className={`flex flex-col items-center justify-center flex-1 h-full
                  transition-colors duration-200 min-h-[44px]
                  ${isActive ? 'text-hacker-primary' : 'text-hacker-textMuted'}`}
+      aria-label={label}
     >
-      <Icon className="w-5 h-5 mb-1" />
+      <Icon className="w-5 h-5 mb-1" aria-hidden="true" />
       <span className="text-[10px] font-medium">{label}</span>
     </button>
   );

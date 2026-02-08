@@ -7,11 +7,16 @@ import type { LearningPath } from '../../data/learningPaths';
 import type { InterviewQuestion } from '../../data/interviewQuestions';
 import { getRandomQuestions } from '../../data/interviewQuestions';
 import { getNextModule } from '../../data/learningPaths';
+import { GettingStarted } from './GettingStarted';
 
 interface TerminalHomeProps {
   onCommand: (command: string) => void;
   onStartInterview?: () => void;
   selectedPath?: LearningPath | null;
+  hasApiKey?: boolean;
+  completedModules?: number;
+  showGettingStarted?: boolean;
+  onDismissGettingStarted?: () => void;
 }
 
 // Comando rápido con descripción
@@ -152,7 +157,15 @@ function generateSuggestions(selectedPath?: LearningPath | null): Suggestion[] {
   return suggestions.slice(0, 3);
 }
 
-export function TerminalHome({ onCommand, onStartInterview, selectedPath }: TerminalHomeProps) {
+export function TerminalHome({ 
+  onCommand, 
+  onStartInterview, 
+  selectedPath,
+  hasApiKey = false,
+  completedModules = 0,
+  showGettingStarted = true,
+  onDismissGettingStarted
+}: TerminalHomeProps) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -201,8 +214,31 @@ export function TerminalHome({ onCommand, onStartInterview, selectedPath }: Term
     };
   };
 
+  const handleGettingStartedAction = (action: 'config' | 'paths' | 'help' | 'focus') => {
+    const commandMap = {
+      config: '/config',
+      paths: '/paths',
+      help: '/help',
+      focus: '/micro',
+    };
+    handleCommand(commandMap[action]);
+  };
+
+  const shouldShowGettingStarted = showGettingStarted && (!hasApiKey || !selectedPath || completedModules === 0);
+
   return (
     <div className="space-y-6">
+      {/* Getting Started - Onboarding */}
+      {shouldShowGettingStarted && (
+        <GettingStarted
+          hasApiKey={hasApiKey}
+          hasSelectedPath={!!selectedPath}
+          completedModules={completedModules}
+          onAction={handleGettingStartedAction}
+          onDismiss={onDismissGettingStarted}
+        />
+      )}
+
       {/* Header con saludo inteligente */}
       <div className="border border-hacker-border rounded-xl p-4 bg-hacker-bgSecondary/50">
         <div className="flex items-center justify-between">

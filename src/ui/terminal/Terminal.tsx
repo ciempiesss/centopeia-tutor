@@ -59,6 +59,8 @@ export function Terminal() {
   const [showHome, setShowHome] = useState(true);
   const [interviewMode, setInterviewMode] = useState(false);
   const [selectedPath, setSelectedPath] = useState<LearningPath | null>(null);
+  const [completedModules, setCompletedModules] = useState(0);
+  const [showGettingStarted, setShowGettingStarted] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -118,6 +120,10 @@ export function Terminal() {
           } else {
             console.log('[LLM] Sin API key, modo demo activo. Usa /config apikey TU_KEY');
           }
+          
+          // Load completed modules count
+          const completedCount = await db.getCompletedModulesCount();
+          setCompletedModules(completedCount);
           
           setIsInitialized(true);
         }
@@ -488,6 +494,10 @@ export function Terminal() {
             }}
             onStartInterview={() => setInterviewMode(true)}
             selectedPath={selectedPath}
+            hasApiKey={!!llmClient}
+            completedModules={completedModules}
+            showGettingStarted={showGettingStarted}
+            onDismissGettingStarted={() => setShowGettingStarted(false)}
           />
         </div>
       ) : (

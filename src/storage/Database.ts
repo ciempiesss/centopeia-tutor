@@ -7,8 +7,7 @@ import type { TerminalMessage, UserProfile, KnowledgeState, StudySession } from 
 
 export class Database {
   async initialize(): Promise<void> {
-    // Preferences doesn't need initialization, but we keep this for API consistency
-    console.log('[Database] Initialized (using Capacitor Preferences)');
+    // Capacitor Preferences no necesita inicialización
   }
 
   async set<T>(key: string, value: T): Promise<void> {
@@ -23,8 +22,7 @@ export class Database {
     if (!value) return defaultValue ?? null;
     try {
       return JSON.parse(value) as T;
-    } catch (e) {
-      console.error(`[Database] Corrupted data for key ${key}:`, e);
+    } catch {
       await this.remove(key);
       return defaultValue ?? null;
     }
@@ -160,4 +158,60 @@ export class CentopeiaDatabase extends Database {
       date: new Date().toDateString(),
     });
   }
+
+  // Module Progress Tracking
+  async getModuleProgress(moduleId: string): Promise<ModuleProgress | null> {
+    return this.get<ModuleProgress>(`module:${moduleId}`);
+  }
+
+  async saveModuleProgress(progress: ModuleProgress): Promise<void> {
+    // Save individual module progress
+    await this.set(`module:${progress.moduleId}`, progress);
+    
+    // Update modules index
+    const allModules = await this.get<string[]>('modules:all', []) || [];
+    if (!allModules.includes(progress.moduleId)) {
+      allModules.push(progress.moduleId);
+      await this.set('modules:all', allModules);
+    }
+  }
+
+  async getAllModuleProgress(): Promise<ModuleProgress[]> {
+    const moduleIds = await this.get<string[]>('modules:all', []) || [];
+    
+    const progresses: ModuleProgress[] = [];
+    for (const id of moduleIds) {
+      const progress = await this.getModuleProgress(id);
+      if (progress) progresses.push(progress);
+    }
+    
+    return progresses;
+  }
+
+  async getPathProgress(pathId: string): Promise<ModuleProgress[]> {
+    const allProgress = await this.getAllModuleProgress();
+    return allProgress.filter(p => p.pathId === pathId);
+  }
+
+  async getCompletedModulesCount(): Promise<number> {
+    const allProgress = await this.getAllModuleProgress();
+    return allProgress.filter(p => p.status === 'completed').length;
+  }
+
+  async getTotalStudyTime(): Promise<number> {
+    const allProgress = await this.getAllModuleProgress();
+    return allProgress.reduce((total, p) => total + (p.timeSpentMinutes || 0), 0);
+  }
+}
+
+// Module Progress Interface
+export interface ModuleProgress {
+  moduleId: string;
+  skillId: string;
+  pathId: string;
+  completedAt?: string;
+  startedAt?: string;
+  score?: number; // for quizzes
+  timeSpentMinutes?: number;
+  status: 'locked' | 'available' | 'in_progress' | 'completed';
 }
