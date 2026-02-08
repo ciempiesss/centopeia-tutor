@@ -104,6 +104,9 @@ export function Terminal() {
           const apiKey = await secureStorage.getApiKey();
           if (apiKey) {
             setLlmClient(new LLMClient({ apiKey }));
+            console.log('[LLM] API key cargada automáticamente, Kimi K2 listo');
+          } else {
+            console.log('[LLM] Sin API key, modo demo activo. Usa /config apikey TU_KEY');
           }
           
           setIsInitialized(true);
@@ -406,6 +409,14 @@ export function Terminal() {
 
     return null;
   }, []);
+
+  // Update context manager when selectedPath changes
+  useEffect(() => {
+    if (selectedPath) {
+      contextManager.updateFullContext({ selectedPath });
+      console.log('[Context] Path actualizado:', selectedPath.title);
+    }
+  }, [selectedPath]);
 
   // Update focus sprint in session
   useEffect(() => {

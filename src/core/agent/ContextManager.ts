@@ -1,14 +1,32 @@
 import type { TerminalMessage, Conversation, StudySession } from '../../types';
+import type { LearningPath } from '../../data/learningPaths';
 
 interface ContextWindow {
   messages: TerminalMessage[];
   totalTokens: number;
 }
 
+interface FullAppContext {
+  session: StudySession | null;
+  selectedPath: LearningPath | null;
+  currentModule: string | null;
+  recentCommands: string[];
+  quizResults: { topic: string; score: number }[];
+  focusSprintsCompleted: number;
+}
+
 export class ContextManager {
   private maxTokens: number;
   private maxMessages: number;
   private currentSession: StudySession | null = null;
+  private fullContext: FullAppContext = {
+    session: null,
+    selectedPath: null,
+    currentModule: null,
+    recentCommands: [],
+    quizResults: [],
+    focusSprintsCompleted: 0,
+  };
 
   constructor(maxTokens: number = 4000, maxMessages: number = 20) {
     this.maxTokens = maxTokens;
@@ -17,10 +35,29 @@ export class ContextManager {
 
   setSession(session: StudySession) {
     this.currentSession = session;
+    this.fullContext.session = session;
   }
 
   getSession(): StudySession | null {
     return this.currentSession;
+  }
+
+  updateFullContext(updates: Partial<FullAppContext>) {
+    this.fullContext = { ...this.fullContext, ...updates };
+  }
+
+  addCommand(command: string) {
+    this.fullContext.recentCommands.unshift(command);
+    if (this.fullContext.recentCommands.length > 10) {
+      this.fullContext.recentCommands.pop();
+    }
+  }
+
+  addQuizResult(topic: string, score: number) {
+    this.fullContext.quizResults.unshift({ topic, score });
+    if (this.fullContext.quizResults.length > 5) {
+      this.fullContext.quizResults.pop();
+    }
   }
 
   // Build context window for LLM
@@ -66,23 +103,64 @@ export class ContextManager {
   }
 
   private getSessionContext(): string | null {
-    if (!this.currentSession) return null;
+    if (!this.currentSession && !this.fullContext.selectedPath) return null;
 
-    const parts: string[] = ['Contexto actual:'];
+    const parts: string[] = ['=== CONTEXTO COMPLETO DE CENTOPEIA ==='];
     
-    if (this.currentSession.lastTopic) {
-      parts.push(`- Tema actual: ${this.currentSession.lastTopic}`);
-    }
-    
-    if (this.currentSession.conceptsCovered?.length) {
-      parts.push(`- Conceptos vistos: ${this.currentSession.conceptsCovered.join(', ')}`);
-    }
-
-    if (this.currentSession.exercisesCompleted > 0) {
-      parts.push(`- Ejercicios completados: ${this.currentSession.exercisesCompleted}`);
+    // PATH seleccionado
+    if (this.fullContext.selectedPath) {
+      parts.push(`\n📚 PATH ACTIVO: ${this.fullContext.selectedPath.title}`);
+      parts.push(`   Descripción: ${this.fullContext.selectedPath.description}`);
+      parts.push(`   Duración: ${this.fullContext.selectedPath.estimatedWeeks} semanas`);
+      parts.push(`   Skills: ${this.fullContext.selectedPath.skills.length}`);
     }
 
-    return parts.length > 1 ? parts.join('\n') : null;
+    // Módulo actual
+    if (this.fullContext.currentModule) {
+      parts.push(`\n📖 MÓDULO ACTUAL: ${this.fullContext.currentModule}`);
+    }
+
+    // Sesión actual
+    if (this.currentSession) {
+      parts.push(`\n⏱️  SESIÓN DE HOY:`);
+      
+      if (this.currentSession.lastTopic) {
+        parts.push(`   - Tema reciente: ${this.currentSession.lastTopic}`);
+      }
+      
+      if (this.currentSession.conceptsCovered?.length) {
+        parts.push(`   - Conceptos vistos: ${this.currentSession.conceptsCovered.slice(-5).join(', ')}`);
+      }
+
+      if (this.currentSession.exercisesCompleted > 0) {
+        parts.push(`   - Ejercicios: ${this.currentSession.exercisesCompleted} completados`);
+      }
+
+      if (this.currentSession.focusSprintCount > 0) {
+        parts.push(`   - Sprints: ${this.currentSession.focusSprintCount} completados`);
+        parts.push(`   - Minutos de focus: ${Math.round(this.currentSession.totalFocusMinutes || 0)}`);
+      }
+    }
+
+    // Quiz recientes
+    if (this.fullContext.quizResults.length > 0) {
+      parts.push(`\n🎯 QUIZ RECIENTES:`);
+      this.fullContext.quizResults.forEach(q => {
+        parts.push(`   - ${q.topic}: ${q.score}%`);
+      });
+    }
+
+    // Comandos recientes
+    if (this.fullContext.recentCommands.length > 0) {
+      parts.push(`\n⌨️  COMANDOS USADOS RECIENTEMENTE:`);
+      this.fullContext.recentCommands.slice(0, 5).forEach(cmd => {
+        parts.push(`   - ${cmd}`);
+      });
+    }
+
+    parts.push(`\n=== FIN DEL CONTEXTO ===\n`);
+
+    return parts.join('\n');
   }
 
   // Summarize older messages to save tokens
