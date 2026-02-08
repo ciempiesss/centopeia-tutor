@@ -68,7 +68,7 @@ export function StatusBar({
           {/* Focus Sprint Indicator */}
           {isFocusActive && (
             <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full 
-                          bg-hacker-primary/20 animate-pulse">
+                          bg-hacker-primary/20 motion-safe:animate-pulse">
               <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-hacker-primary" />
               <span className="text-hacker-primary font-bold text-xs sm:text-sm tabular-nums">
                 {formatTime(timeRemaining)}
@@ -109,7 +109,8 @@ export function StatusBar({
           {/* More menu button (mobile) */}
           <button 
             className="sm:hidden p-1.5 rounded hover:bg-hacker-bgTertiary active:bg-hacker-bgTertiary/80
-                       min-h-[32px] min-w-[32px] flex items-center justify-center"
+                       min-h-[32px] min-w-[32px] flex items-center justify-center
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary"
             aria-label="Más opciones"
           >
             <MoreHorizontal className="w-4 h-4 text-hacker-textMuted" />

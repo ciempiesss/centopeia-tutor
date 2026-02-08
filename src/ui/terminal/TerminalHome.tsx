@@ -215,6 +215,8 @@ export function TerminalHome({ onCommand, onStartInterview, selectedPath }: Term
                 onClick={() => handleCommand(cmd.command)}
                 className="group p-4 rounded-xl border border-hacker-border bg-hacker-bgSecondary
                          hover:border-hacker-borderHover hover:bg-hacker-bgTertiary
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                         focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgPrimary
                          transition-all duration-200 text-left relative overflow-hidden"
               >
                 {/* Color accent */}
@@ -271,6 +273,8 @@ export function TerminalHome({ onCommand, onStartInterview, selectedPath }: Term
                 onClick={() => handleCommand(suggestion.command)}
                 className="w-full p-3 rounded-xl border border-hacker-border bg-hacker-bgSecondary
                          hover:border-hacker-borderHover hover:bg-hacker-bgTertiary
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                         focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgPrimary
                          transition-all duration-200 flex items-center gap-4 group"
               >
                 <div 
@@ -346,6 +350,8 @@ export function TerminalHome({ onCommand, onStartInterview, selectedPath }: Term
               onClick={() => handleCommand('/interview')}
               className="px-4 py-2 bg-hacker-primary text-hacker-bg font-bold rounded-lg
                        hover:bg-hacker-primaryDim transition-colors
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                       focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgPrimary
                        flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
@@ -383,6 +389,7 @@ export function TerminalHome({ onCommand, onStartInterview, selectedPath }: Term
               className="px-3 py-1.5 text-xs font-mono rounded-lg
                        bg-hacker-bgTertiary text-hacker-textMuted
                        hover:bg-hacker-border hover:text-hacker-text
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
                        transition-colors"
             >
               {cmd}
@@ -424,14 +431,18 @@ export function InterviewMode({ onExit }: InterviewModeProps) {
               setShowAnswer(false);
             }}
             className="px-6 py-3 bg-hacker-primary text-hacker-bg font-bold rounded-xl
-                     hover:bg-hacker-primaryDim transition-colors block w-full"
+                     hover:bg-hacker-primaryDim transition-colors block w-full
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white
+                     focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary"
           >
             Otra ronda
           </button>
           <button
             onClick={onExit}
             className="px-6 py-3 border border-hacker-border text-hacker-text rounded-xl
-                     hover:bg-hacker-bgTertiary transition-colors block w-full"
+                     hover:bg-hacker-bgTertiary transition-colors block w-full
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                     focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary"
           >
             Volver al inicio
           </button>
@@ -454,7 +465,9 @@ export function InterviewMode({ onExit }: InterviewModeProps) {
           </div>
           <button
             onClick={onExit}
-            className="text-xs text-hacker-textMuted hover:text-hacker-text"
+            className="text-xs text-hacker-textMuted hover:text-hacker-text
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                       focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary rounded px-2 py-1"
           >
             Salir
           </button>
@@ -495,7 +508,9 @@ export function InterviewMode({ onExit }: InterviewModeProps) {
               <button
                 onClick={() => setShowAnswer(true)}
                 className="px-6 py-3 bg-hacker-primary text-hacker-bg font-bold rounded-xl
-                         hover:bg-hacker-primaryDim transition-colors"
+                         hover:bg-hacker-primaryDim transition-colors
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white
+                         focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary"
               >
                 Ver tips de respuesta
               </button>
@@ -560,7 +575,9 @@ export function InterviewMode({ onExit }: InterviewModeProps) {
                   }
                 }}
                 className="w-full px-6 py-3 bg-hacker-primary text-hacker-bg font-bold rounded-xl
-                         hover:bg-hacker-primaryDim transition-colors"
+                         hover:bg-hacker-primaryDim transition-colors
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white
+                         focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary"
               >
                 {currentIndex < questions.length - 1 ? 'Siguiente pregunta' : 'Finalizar'}
               </button>

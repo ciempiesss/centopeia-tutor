@@ -230,13 +230,13 @@ export function OutputBuffer({ messages, isTyping, messagesEndRef }: OutputBuffe
       
       {/* Typing indicator */}
       {isTyping && (
-        <div className="flex items-center gap-2 text-hacker-primary animate-pulse py-2">
+        <div className="flex items-center gap-2 text-hacker-primary motion-safe:animate-pulse py-2">
           <Bot className="w-4 h-4" />
           <span className="text-sm">Centopeia está escribiendo</span>
           <span className="flex gap-0.5">
-            <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-            <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-            <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+            <span className="motion-safe:animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+            <span className="motion-safe:animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+            <span className="motion-safe:animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
           </span>
         </div>
       )}

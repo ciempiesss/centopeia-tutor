@@ -46,6 +46,7 @@ export class LLMClient {
   private maxTokens: number;
   private baseUrl = 'https://api.groq.com/openai/v1';
   private abortController: AbortController | null = null;
+  private readonly REQUEST_TIMEOUT = 60000; // 60 segundos
 
   // Modelos disponibles en Groq
   static readonly MODELS = {
@@ -142,6 +143,11 @@ export class LLMClient {
     ];
 
     this.abortController = new AbortController();
+    
+    // Timeout para evitar requests colgados
+    const timeoutId = setTimeout(() => {
+      this.abortController?.abort('Request timeout');
+    }, this.REQUEST_TIMEOUT);
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -161,6 +167,7 @@ export class LLMClient {
       });
 
       if (!response.ok) {
+        clearTimeout(timeoutId);
         throw new Error(`HTTP ${response.status}`);
       }
 
@@ -184,6 +191,8 @@ export class LLMClient {
             if (data === '[DONE]') return;
 
             try {
+              // Limpiar timeout en cada chunk recibido
+              clearTimeout(timeoutId);
               const parsed = JSON.parse(data);
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) yield content;
@@ -198,6 +207,8 @@ export class LLMClient {
         throw new Error('Request aborted');
       }
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

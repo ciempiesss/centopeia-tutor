@@ -143,7 +143,9 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
         disabled={isDisabled}
         placeholder={placeholder}
         className={`flex-1 bg-transparent text-hacker-text font-mono text-base
-                   focus:outline-none placeholder:text-hacker-textDim
+                   focus:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary/50
+                   focus-visible:ring-inset rounded-sm
+                   placeholder:text-hacker-textDim
                    disabled:opacity-50 disabled:cursor-not-allowed
                    ${TOUCH_TARGET_SIZE} px-2`}
         spellCheck={false}
@@ -162,6 +164,8 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
                    text-hacker-primary 
                    active:bg-hacker-primary/20 
                    disabled:opacity-50 disabled:cursor-not-allowed
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                   focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary
                    transition-colors duration-75 rounded-lg
                    touch-manipulation`}
         aria-label="Enviar mensaje"

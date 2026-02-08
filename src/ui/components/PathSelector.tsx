@@ -34,6 +34,8 @@ function MobilePathCard({
     <button
       onClick={onClick}
       className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left
+                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                 focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgPrimary
                  ${isSelected 
                    ? 'border-hacker-primary bg-hacker-primary/10' 
                    : 'border-hacker-border bg-hacker-bgSecondary hover:border-hacker-borderHover'
@@ -99,7 +101,9 @@ function DesktopPathCard({
     <button
       onClick={onClick}
       className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 text-left
-                 hover:scale-[1.02] hover:shadow-lg
+                 motion-safe:hover:scale-[1.02] hover:shadow-lg
+                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                 focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgPrimary
                  ${isSelected 
                    ? 'border-hacker-primary bg-hacker-primary/5 shadow-hacker-primary/20' 
                    : 'border-hacker-border bg-hacker-bgSecondary hover:border-hacker-borderHover'

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import { 
   ChevronDown, ChevronUp, Clock, CheckCircle2, 
   Circle, Play, Lock, Trophy, Target,
@@ -15,7 +15,7 @@ interface LearningPathViewProps {
 }
 
 // Status badge component
-function StatusBadge({ status }: { status: MicroModule['status'] }) {
+const StatusBadge = memo(function StatusBadge({ status }: { status: MicroModule['status'] }) {
   const styles = {
     locked: 'bg-hacker-textDim/20 text-hacker-textDim',
     available: 'bg-hacker-secondary/20 text-hacker-secondary',
@@ -35,10 +35,10 @@ function StatusBadge({ status }: { status: MicroModule['status'] }) {
       {labels[status]}
     </span>
   );
-}
+});
 
 // Level badge
-function LevelBadge({ level }: { level: Skill['level'] }) {
+const LevelBadge = memo(function LevelBadge({ level }: { level: Skill['level'] }) {
   const styles = {
     beginner: 'bg-green-500/20 text-green-400',
     intermediate: 'bg-yellow-500/20 text-yellow-400',
@@ -56,10 +56,10 @@ function LevelBadge({ level }: { level: Skill['level'] }) {
       {labels[level]}
     </span>
   );
-}
+});
 
 // Skill card (expandible)
-function SkillCard({ 
+const SkillCard = memo(function SkillCard({ 
   skill, 
   pathColor,
   onSelectModule,
@@ -72,17 +72,23 @@ function SkillCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const completedModules = skill.modules.filter(m => m.status === 'completed').length;
-  const progress = skill.modules.length > 0 
-    ? (completedModules / skill.modules.length) * 100 
-    : 0;
+  const completedModules = useMemo(() => 
+    skill.modules.filter(m => m.status === 'completed').length, 
+    [skill.modules]
+  );
+  const progress = useMemo(() => 
+    skill.modules.length > 0 ? (completedModules / skill.modules.length) * 100 : 0,
+    [completedModules, skill.modules.length]
+  );
 
   return (
     <div className="border border-hacker-border rounded-xl overflow-hidden bg-hacker-bgSecondary">
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full p-4 flex items-center gap-4 hover:bg-hacker-bgTertiary transition-colors"
+        className="w-full p-4 flex items-center gap-4 hover:bg-hacker-bgTertiary 
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                   focus-visible:ring-inset transition-colors"
       >
         <div 
           className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -160,6 +166,8 @@ function SkillCard({
               className={`w-full p-4 flex items-center gap-4 text-left
                         border-b border-hacker-border last:border-0
                         transition-colors
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                        focus-visible:ring-inset
                         ${module.status === 'locked' 
                           ? 'opacity-50 cursor-not-allowed' 
                           : 'hover:bg-hacker-bgTertiary cursor-pointer'
@@ -210,7 +218,7 @@ function SkillCard({
       )}
     </div>
   );
-}
+});
 
 // Vista móvil: Lista vertical
 function MobilePathView({ path, onStartModule }: LearningPathViewProps) {
@@ -262,7 +270,9 @@ function MobilePathView({ path, onStartModule }: LearningPathViewProps) {
             onClick={() => onStartModule(nextModule)}
             className="w-full mt-4 py-3 px-4 rounded-xl font-medium
                      flex items-center justify-center gap-2
-                     transition-all active:scale-[0.98]"
+                     transition-all motion-safe:active:scale-[0.98]
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white
+                     focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary"
             style={{ 
               backgroundColor: path.color,
               color: '#0a0a0a'
@@ -444,7 +454,8 @@ function ModuleDetail({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-hacker-bgTertiary rounded-lg transition-colors"
+            className="p-2 hover:bg-hacker-bgTertiary rounded-lg transition-colors
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary"
           >
             Cerrar
           </button>
@@ -492,7 +503,9 @@ function ModuleDetail({
         {module.status !== 'locked' && (
           <button
             className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2
-                     transition-all hover:scale-[1.02] active:scale-[0.98]"
+                     transition-all motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white
+                     focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary"
             style={{ 
               backgroundColor: pathColor,
               color: '#0a0a0a'
