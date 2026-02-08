@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centopeia - Operations Center</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-header: #1a1a2e;
+            --accent-primary: #00ff41;
+            --accent-secondary: #00f0ff;
+            --accent-warning: #ffb000;
+            --accent-danger: #ff4444;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888899;
+            --text-muted: #555566;
+            --border: #2a2a3a;
+            --radius: 12px;
+            --gap: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--gap);
+        }
+
+        /* Live Header */
+        .live-header {
+            background: linear-gradient(135deg, var(--bg-header) 0%, #252540 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 24px;
+            margin-bottom: var(--gap);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .live-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        .session-timer {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Main Grid */
+        .ops-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+
+        .ops-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .ops-title {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        /* Focus Sprint Status */
+        .sprint-status {
+            text-align: center;
+        }
+
+        .sprint-timer {
+            font-size: 64px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            margin: 20px 0;
+            text-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+        }
+
+        .sprint-phase {
+            display: inline-block;
+            padding: 6px 16px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid var(--accent-primary);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--accent-primary);
+            margin-bottom: 16px;
+        }
+
+        .visual-blocks {
+            display: flex;
+            gap: 4px;
+            margin: 20px 0;
+        }
+
+        .time-block {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-header);
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .time-block.active { background: var(--accent-primary); }
+        .time-block.warning { background: var(--accent-warning); }
+
+        .sprint-controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn.primary {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .control-btn.secondary {
+            background: var(--bg-header);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        /* Real-time Metrics */
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-name {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .metric-value-live {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        .trend-arrow {
+            font-size: 12px;
+            margin-left: 4px;
+        }
+
+        .trend-arrow.up { color: var(--accent-primary); }
+        .trend-arrow.down { color: var(--accent-danger); }
+
+        /* Mini Chart */
+        .mini-chart {
+            height: 100px;
+            margin-top: 12px;
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .feed-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .feed-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            min-width: 50px;
+        }
+
+        .feed-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .feed-icon.focus { background: rgba(0, 255, 65, 0.1); }
+        .feed-icon.quiz { background: rgba(255, 176, 0, 0.1); }
+        .feed-icon.module { background: rgba(0, 240, 255, 0.1); }
+        .feed-icon.achievement { background: rgba(255, 215, 0, 0.1); }
+
+        .feed-content {
+            flex: 1;
+        }
+
+        .feed-text {
+            font-size: 13px;
+        }
+
+        .feed-detail {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Bottom Row */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: var(--gap);
+        }
+
+        /* Today's Timeline */
+        .timeline-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--bg-header);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 16px 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -26px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--bg-header);
+            border: 2px solid var(--border);
+        }
+
+        .timeline-item.active .timeline-dot {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .timeline-item.completed .timeline-dot {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .timeline-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .timeline-title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .timeline-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Daily Goals */
+        .goals-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .goal-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .goal-item:last-child {
+            border-bottom: none;
+        }
+
+        .goal-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .goal-item.completed .goal-checkbox {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .goal-text {
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .goal-item.completed .goal-text {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .goal-xp {
+            font-size: 11px;
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .ops-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .bottom-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .ops-grid {
+                grid-template-columns: 1fr;
+            }
+            .sprint-timer {
+                font-size: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Live Header -->
+        <header class="live-header">
+            <div class="live-indicator">
+                <div class="live-dot"></div>
+                <span class="live-text">● SESIÓN EN VIVO</span>
+            </div>
+            <div class="session-timer" id="sessionTimer">00:45:23</div>
+        </header>
+
+        <!-- Operations Grid -->
+        <div class="ops-grid">
+            <!-- Focus Sprint Card -->
+            <div class="ops-card">
+                <div class="ops-title">Focus Sprint Activo</div>
+                <div class="sprint-status">
+                    <div class="sprint-phase">🍅 Sprint #3 de hoy</div>
+                    <div class="sprint-timer" id="sprintTimer">14:32</div>
+                    <div class="visual-blocks" id="timeBlocks">
+                        <!-- Blocks generated by JS -->
+                    </div>
+                    <div class="sprint-controls">
+                        <button class="control-btn secondary">⏸ Pausar</button>
+                        <button class="control-btn primary">✓ Completar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Metrics -->
+            <div class="ops-card">
+                <div class="ops-title">Métricas en Vivo</div>
+                <div class="metric-row">
+                    <span class="metric-name">Ritmo de estudio</span>
+                    <span class="metric-value-live">
+                        12 min/h
+                        <span class="trend-arrow up">▲</span>
+                    </span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name">Consistencia hoy</span>
+                    <span class="metric-value-live">
+                        85%
+                        <span class="trend-arrow up">▲</span>
+                    </span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name">Energía estimada</span>
+                    <span class="metric-value-live">
+                        72%
+                        <span class="trend-arrow down">▼</span>
+                    </span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name">Próximo break</span>
+                    <span class="metric-value-live" style="color: var(--accent-warning);">
+                        en 5 min
+                    </span>
+                </div>
+                <div class="mini-chart">
+                    <canvas id="sessionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="ops-card">
+                <div class="ops-title">Feed de Actividad</div>
+                <div class="activity-feed">
+                    <div class="feed-item">
+                        <span class="feed-time">10:42</span>
+                        <div class="feed-icon focus">⏱️</div>
+                        <div class="feed-content">
+                            <div class="feed-text">Focus sprint completado</div>
+                            <div class="feed-detail">25 minutos • QA Fundamentals</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <span class="feed-time">10:15</span>
+                        <div class="feed-icon quiz">📝</div>
+                        <div class="feed-content">
+                            <div class="feed-text">Quiz completado</div>
+                            <div class="feed-detail">85% • Equivalence Partitioning</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <span class="feed-time">09:30</span>
+                        <div class="feed-icon module">📖</div>
+                        <div class="feed-content">
+                            <div class="feed-text">Módulo completado</div>
+                            <div class="feed-detail">Boundary Value Analysis</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <span class="feed-time">09:00</span>
+                        <div class="feed-icon achievement">🏆</div>
+                        <div class="feed-content">
+                            <div class="feed-text">Logro desbloqueado</div>
+                            <div class="feed-detail">Early Bird: Estudia antes de 9am</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <span class="feed-time">08:45</span>
+                        <div class="feed-icon focus">⏱️</div>
+                        <div class="feed-content">
+                            <div class="feed-text">Inició sesión de estudio</div>
+                            <div class="feed-detail">Path: QA Tester</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="bottom-row">
+            <!-- Today's Timeline -->
+            <div class="timeline-container">
+                <div class="ops-title">Timeline de Hoy</div>
+                <div class="timeline">
+                    <div class="timeline-item completed">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-time">08:45 - 09:15</div>
+                        <div class="timeline-title">Warm-up & Planning</div>
+                        <div class="timeline-desc">Revisión de objetivos diarios</div>
+                    </div>
+                    <div class="timeline-item completed">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-time">09:15 - 10:00</div>
+                        <div class="timeline-title">Módulo: BVA</div>
+                        <div class="timeline-desc">Completado + quiz (85%)</div>
+                    </div>
+                    <div class="timeline-item completed">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-time">10:00 - 10:30</div>
+                        <div class="timeline-title">Focus Sprint #2</div>
+                        <div class="timeline-desc">Repaso de notas</div>
+                    </div>
+                    <div class="timeline-item active">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-time">10:45 - 11:15</div>
+                        <div class="timeline-title" style="color: var(--accent-primary);">Focus Sprint #3 - ACTIVO</div>
+                        <div class="timeline-desc">Decision Table Testing</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-time">11:15 - 11:30</div>
+                        <div class="timeline-title">Break</div>
+                        <div class="timeline-desc">Descanso recomendado</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-time">11:30 - 12:30</div>
+                        <div class="timeline-title">Práctica de Código</div>
+                        <div class="timeline-desc">Ejercicios de SQL</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Goals -->
+            <div class="goals-card">
+                <div class="ops-title">Objetivos del Día</div>
+                <div class="goal-item completed">
+                    <div class="goal-checkbox">✓</div>
+                    <div class="goal-text">Completar 1 módulo</div>
+                    <div class="goal-xp">+50 XP</div>
+                </div>
+                <div class="goal-item completed">
+                    <div class="goal-checkbox">✓</div>
+                    <div class="goal-text">Hacer 2 focus sprints</div>
+                    <div class="goal-xp">+30 XP</div>
+                </div>
+                <div class="goal-item">
+                    <div class="goal-checkbox"></div>
+                    <div class="goal-text">Completar 3 focus sprints</div>
+                    <div class="goal-xp" style="color: var(--text-muted);">+50 XP</div>
+                </div>
+                <div class="goal-item">
+                    <div class="goal-checkbox"></div>
+                    <div class="goal-text">Quiz con 80%+</div>
+                    <div class="goal-xp" style="color: var(--text-muted);">+40 XP</div>
+                </div>
+                <div class="goal-item">
+                    <div class="goal-checkbox"></div>
+                    <div class="goal-text">30 minutos de práctica</div>
+                    <div class="goal-xp" style="color: var(--text-muted);">+25 XP</div>
+                </div>
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span style="color: var(--text-secondary);">Progreso</span>
+                        <span style="color: var(--accent-primary); font-weight: 600;">2/5 completados</span>
+                    </div>
+                    <div style="height: 6px; background: var(--bg-header); border-radius: 3px; margin-top: 8px; overflow: hidden;">
+                        <div style="width: 40%; height: 100%; background: var(--accent-primary); border-radius: 3px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Chart.defaults.color = '#888899';
+        Chart.defaults.borderColor = '#2a2a3a';
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+        // Generate time blocks
+        const blocksContainer = document.getElementById('timeBlocks');
+        const totalBlocks = 10;
+        const activeBlocks = 6;
+        
+        for (let i = 0; i < totalBlocks; i++) {
+            const block = document.createElement('div');
+            block.className = 'time-block';
+            if (i < activeBlocks) {
+                block.classList.add(i < 4 ? 'active' : 'warning');
+            }
+            blocksContainer.appendChild(block);
+        }
+
+        // Session activity chart
+        const sessionCtx = document.getElementById('sessionChart').getContext('2d');
+        new Chart(sessionCtx, {
+            type: 'line',
+            data: {
+                labels: ['8:45', '9:00', '9:15', '9:30', '9:45', '10:00', '10:15', '10:30', '10:45'],
+                datasets: [{
+                    label: 'Actividad',
+                    data: [20, 85, 90, 75, 80, 95, 85, 0, 70],
+                    borderColor: '#00ff41',
+                    backgroundColor: 'rgba(0, 255, 65, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        display: false,
+                        min: 0,
+                        max: 100
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 9 } }
+                    }
+                }
+            }
+        });
+
+        // Session timer
+        let sessionSeconds = 45 * 60 + 23;
+        setInterval(() => {
+            sessionSeconds++;
+            const hours = Math.floor(sessionSeconds / 3600);
+            const minutes = Math.floor((sessionSeconds % 3600) / 60);
+            const seconds = sessionSeconds % 60;
+            document.getElementById('sessionTimer').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        // Sprint countdown
+        let sprintSeconds = 14 * 60 + 32;
+        setInterval(() => {
+            sprintSeconds--;
+            if (sprintSeconds < 0) sprintSeconds = 25 * 60;
+            const minutes = Math.floor(sprintSeconds / 60);
+            const seconds = sprintSeconds % 60;
+            document.getElementById('sprintTimer').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+    </script>
+</body>
+</html>

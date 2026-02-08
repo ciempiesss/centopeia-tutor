@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centopeia - Tactical Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-header: #1a1a2e;
+            --accent-primary: #00ff41;
+            --accent-secondary: #00f0ff;
+            --accent-warning: #ffb000;
+            --accent-danger: #ff4444;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888899;
+            --text-muted: #555566;
+            --border: #2a2a3a;
+            --radius: 12px;
+            --gap: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--gap);
+        }
+
+        /* Header */
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--bg-header) 0%, #252540 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: var(--gap);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title h1 {
+            font-size: 20px;
+            color: var(--accent-primary);
+            margin-bottom: 4px;
+        }
+
+        .header-title p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .path-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .path-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .path-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .path-btn.active {
+            background: rgba(0, 255, 65, 0.1);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        /* Skills Progress Section */
+        .skills-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: var(--gap);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .overall-progress {
+            text-align: right;
+        }
+
+        .progress-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .progress-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .skill-item {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .skill-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .skill-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .skill-percent {
+            font-size: 13px;
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .skill-bar {
+            height: 8px;
+            background: var(--bg-header);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .skill-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .skill-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .metric-icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 12px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .metric-icon.green { background: rgba(0, 255, 65, 0.1); }
+        .metric-icon.cyan { background: rgba(0, 240, 255, 0.1); }
+        .metric-icon.orange { background: rgba(255, 176, 0, 0.1); }
+        .metric-icon.red { background: rgba(255, 68, 68, 0.1); }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Charts Row */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .chart-container {
+            height: 250px;
+        }
+
+        /* Quiz History */
+        .quiz-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .quiz-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .quiz-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-primary);
+        }
+
+        .quiz-score {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .quiz-score.high { background: rgba(0, 255, 65, 0.2); color: var(--accent-primary); }
+        .quiz-score.medium { background: rgba(255, 176, 0, 0.2); color: var(--accent-warning); }
+        .quiz-score.low { background: rgba(255, 68, 68, 0.2); color: var(--accent-danger); }
+
+        .quiz-info {
+            flex: 1;
+        }
+
+        .quiz-topic {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .quiz-date {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Time Breakdown */
+        .breakdown-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--gap);
+            margin-bottom: var(--gap);
+        }
+
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .activity-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-name {
+            font-size: 13px;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .activity-bar {
+            width: 100px;
+            height: 6px;
+            background: var(--bg-header);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .activity-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .activity-value {
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+            .breakdown-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            .skills-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-title">
+                <h1>Vista Táctica</h1>
+                <p>Análisis detallado de progreso por Path</p>
+            </div>
+            <div class="path-selector">
+                <button class="path-btn active">QA Tester</button>
+                <button class="path-btn">Developer</button>
+                <button class="path-btn">Data Analyst</button>
+            </div>
+        </header>
+
+        <!-- Skills Progress -->
+        <div class="skills-section">
+            <div class="section-header">
+                <div class="section-title">Progreso de Skills - QA Tester</div>
+                <div class="overall-progress">
+                    <div class="progress-value">34%</div>
+                    <div class="progress-label">COMPLETADO</div>
+                </div>
+            </div>
+            <div class="skills-grid">
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <span class="skill-name">Fundamentos de Testing</span>
+                        <span class="skill-percent">100%</span>
+                    </div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 100%"></div>
+                    </div>
+                    <div class="skill-meta">
+                        <span>4/4 módulos</span>
+                        <span>✓ Completado</span>
+                    </div>
+                </div>
+
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <span class="skill-name">Test Case Design</span>
+                        <span class="skill-percent">60%</span>
+                    </div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 60%"></div>
+                    </div>
+                    <div class="skill-meta">
+                        <span>3/5 módulos</span>
+                        <span>En progreso</span>
+                    </div>
+                </div>
+
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <span class="skill-name">API Testing</span>
+                        <span class="skill-percent">25%</span>
+                    </div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 25%"></div>
+                    </div>
+                    <div class="skill-meta">
+                        <span>1/4 módulos</span>
+                        <span>En progreso</span>
+                    </div>
+                </div>
+
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <span class="skill-name">Automation (Selenium)</span>
+                        <span class="skill-percent">0%</span>
+                    </div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="skill-meta">
+                        <span>0/6 módulos</span>
+                        <span>Bloqueado</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon green">⏱️</div>
+                <div class="metric-value" style="color: var(--accent-primary);">12.5h</div>
+                <div class="metric-label">Tiempo Total</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon cyan">📚</div>
+                <div class="metric-value" style="color: var(--accent-secondary);">8</div>
+                <div class="metric-label">Módulos Vistos</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon orange">📝</div>
+                <div class="metric-value" style="color: var(--accent-warning);">12</div>
+                <div class="metric-label">Quizzes</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon red">🎯</div>
+                <div class="metric-value" style="color: var(--accent-danger);">76%</div>
+                <div class="metric-label">Promedio</div>
+            </div>
+        </div>
+
+        <!-- Charts & Quiz History -->
+        <div class="charts-row">
+            <div class="chart-card">
+                <div class="chart-title">Evolución de Conocimiento</div>
+                <div class="chart-container">
+                    <canvas id="knowledgeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="quiz-section">
+                <div class="chart-title">Historial de Quizzes</div>
+                <div class="quiz-list">
+                    <div class="quiz-item">
+                        <div class="quiz-score high">92%</div>
+                        <div class="quiz-info">
+                            <div class="quiz-topic">Equivalence Partitioning</div>
+                            <div class="quiz-date">Hace 2 días</div>
+                        </div>
+                    </div>
+                    <div class="quiz-item">
+                        <div class="quiz-score medium">68%</div>
+                        <div class="quiz-info">
+                            <div class="quiz-topic">Boundary Value Analysis</div>
+                            <div class="quiz-date">Hace 5 días</div>
+                        </div>
+                    </div>
+                    <div class="quiz-item">
+                        <div class="quiz-score high">85%</div>
+                        <div class="quiz-info">
+                            <div class="quiz-topic">Smoke vs Sanity</div>
+                            <div class="quiz-date">Hace 1 semana</div>
+                        </div>
+                    </div>
+                    <div class="quiz-item">
+                        <div class="quiz-score low">45%</div>
+                        <div class="quiz-info">
+                            <div class="quiz-topic">Decision Tables</div>
+                            <div class="quiz-date">Hace 1 semana</div>
+                        </div>
+                    </div>
+                    <div class="quiz-item">
+                        <div class="quiz-score high">88%</div>
+                        <div class="quiz-info">
+                            <div class="quiz-topic">QA vs QC vs Testing</div>
+                            <div class="quiz-date">Hace 2 semanas</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Time Breakdown -->
+        <div class="breakdown-section">
+            <div class="chart-card">
+                <div class="chart-title">Distribución de Tiempo</div>
+                <div class="chart-container">
+                    <canvas id="timeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">Actividades por Tipo</div>
+                <div class="activity-list" style="margin-top: 20px;">
+                    <div class="activity-item">
+                        <div class="activity-dot" style="background: var(--accent-primary);"></div>
+                        <div class="activity-info">
+                            <div class="activity-name">Focus Sprints</div>
+                            <div class="activity-time">23 sesiones</div>
+                        </div>
+                        <div class="activity-bar">
+                            <div class="activity-fill" style="width: 45%; background: var(--accent-primary);"></div>
+                        </div>
+                        <div class="activity-value">5.2h</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-dot" style="background: var(--accent-secondary);"></div>
+                        <div class="activity-info">
+                            <div class="activity-name">Lectura de Módulos</div>
+                            <div class="activity-time">12 módulos</div>
+                        </div>
+                        <div class="activity-bar">
+                            <div class="activity-fill" style="width: 35%; background: var(--accent-secondary);"></div>
+                        </div>
+                        <div class="activity-value">4.1h</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-dot" style="background: var(--accent-warning);"></div>
+                        <div class="activity-info">
+                            <div class="activity-name">Quizzes</div>
+                            <div class="activity-time">12 quizzes</div>
+                        </div>
+                        <div class="activity-bar">
+                            <div class="activity-fill" style="width: 15%; background: var(--accent-warning);"></div>
+                        </div>
+                        <div class="activity-value">1.8h</div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-dot" style="background: var(--accent-danger);"></div>
+                        <div class="activity-info">
+                            <div class="activity-name">Práctica de Código</div>
+                            <div class="activity-time">8 ejercicios</div>
+                        </div>
+                        <div class="activity-bar">
+                            <div class="activity-fill" style="width: 10%; background: var(--accent-danger);"></div>
+                        </div>
+                        <div class="activity-value">1.4h</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Chart.defaults.color = '#888899';
+        Chart.defaults.borderColor = '#2a2a3a';
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+        // Knowledge Evolution Chart
+        const knowledgeCtx = document.getElementById('knowledgeChart').getContext('2d');
+        new Chart(knowledgeCtx, {
+            type: 'line',
+            data: {
+                labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+                datasets: [{
+                    label: 'Módulos Completados',
+                    data: [1, 2, 3, 5, 6, 8],
+                    borderColor: '#00ff41',
+                    backgroundColor: 'rgba(0, 255, 65, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    yAxisID: 'y'
+                }, {
+                    label: 'Quiz Average (%)',
+                    data: [65, 70, 68, 75, 78, 76],
+                    borderColor: '#00f0ff',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { usePointStyle: true, padding: 20 }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        grid: { color: '#2a2a3a' },
+                        title: { display: true, text: 'Módulos' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'Quiz %' },
+                        min: 0,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        // Time Distribution Chart
+        const timeCtx = document.getElementById('timeChart').getContext('2d');
+        new Chart(timeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Lectura', 'Focus', 'Quizzes', 'Práctica', 'Reviews'],
+                datasets: [{
+                    label: 'Horas',
+                    data: [4.1, 5.2, 1.8, 1.4, 0.5],
+                    backgroundColor: [
+                        '#00f0ff',
+                        '#00ff41',
+                        '#ffb000',
+                        '#ff4444',
+                        '#888899'
+                    ],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#2a2a3a' },
+                        title: { display: true, text: 'Horas' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
