@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { TerminalMessage, StudySession } from '../../types';
 import { InputLine } from './InputLine';
 import { OutputBuffer } from './OutputBuffer';
 import { StatusBar } from './StatusBar';
 import { useFocusSprint } from '../../core/audhd/FocusSprint';
 import { TerminalHome, InterviewMode } from './TerminalHome';
-import type { LearningPath } from '../../data/learningPaths';
+import { getPathById, type LearningPath } from '../../data/learningPaths';
 import { commandRegistry } from './commands';
 import { LLMClient } from '../../core/agent/LLMClient';
 import { ContextManager } from '../../core/agent/ContextManager';
@@ -14,7 +14,7 @@ import { secureStorage } from '../../storage/SecureStorage';
 import { codeExecutor } from '../../tools/CodeExecutor';
 import { quizGenerator } from '../../tools/QuizGenerator';
 import { generateId } from '../../utils/idGenerator';
-import { Capacitor } from '@capacitor/core';
+
 
 // Initialize services
 const db = CentopeiaDatabase.getInstance();
@@ -59,6 +59,7 @@ export function Terminal() {
   const [showHome, setShowHome] = useState(true);
   const [interviewMode, setInterviewMode] = useState(false);
   const [selectedPath, setSelectedPath] = useState<LearningPath | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,6 +100,15 @@ export function Terminal() {
         if (!isCancelled) {
           setCurrentSession(session);
           contextManager.setSession(session);
+          
+          // Load user's selected path from profile
+          const profile = await db.getUserProfile();
+          if (profile?.roleFocus && profile.roleFocus !== 'exploring') {
+            const path = getPathById(profile.roleFocus);
+            if (path) {
+              setSelectedPath(path);
+            }
+          }
           
           // Check for API key in secure storage
           const apiKey = await secureStorage.getApiKey();

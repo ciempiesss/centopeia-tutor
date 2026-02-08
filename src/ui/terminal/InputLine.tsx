@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react';
 import { Terminal, ArrowRight } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
+
+import { CommandSuggestions, DEFAULT_COMMAND_SUGGESTIONS } from './CommandSuggestions';
 
 interface InputLineProps {
   onSubmit: (input: string) => void;
@@ -14,6 +15,7 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +64,9 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
   const handleSubmit = useCallback(() => {
     if (!input.trim() || isDisabled) return;
     
+    // Hide suggestions before submitting
+    setShowSuggestions(false);
+    
     onSubmit(input);
     setHistory(prev => {
       const newHistory = [...prev, input];
@@ -74,13 +79,73 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
     setInput('');
   }, [input, isDisabled, onSubmit]);
 
+  const handleSuggestionSelect = useCallback((command: string) => {
+    setInput(command + ' ');
+    setShowSuggestions(false);
+    // Focus back on input after selection
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSuggestionClose = useCallback(() => {
+    setShowSuggestions(false);
+  }, []);
+
+  // Show suggestions when input starts with "/"
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInput(newValue);
+    
+    // Show suggestions when typing "/" or after a "/" command
+    if (newValue.startsWith('/')) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  }, []);
+
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    // Handle Tab key for autocomplete
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      
+      // If suggestions are visible, let CommandSuggestions handle it
+      if (showSuggestions) {
+        // The CommandSuggestions component will handle this via document listener
+        return;
+      }
+      
+      // If input starts with "/" but suggestions not shown, show them
+      if (input.startsWith('/')) {
+        setShowSuggestions(true);
+        return;
+      }
+      
+      return;
+    }
+
+    // Handle other keys
     switch (e.key) {
       case 'Enter':
-        e.preventDefault();
-        handleSubmit();
+        // If suggestions are visible and user hasn't explicitly navigated,
+        // submit the current input (don't prevent default here, let it submit)
+        if (!showSuggestions) {
+          e.preventDefault();
+          handleSubmit();
+        } else {
+          // Suggestions are visible - the CommandSuggestions component handles Enter
+          // for selection, but if no suggestion is selected, we should submit
+          // Actually, we let CommandSuggestions handle it and close suggestions
+          // when user presses Enter without a selection
+          handleSubmit();
+        }
         break;
       case 'ArrowUp':
+        // If suggestions are visible, let CommandSuggestions handle arrow navigation
+        if (showSuggestions) {
+          // Let the suggestions component handle it
+          return;
+        }
+        
         e.preventDefault();
         if (historyIndex < history.length - 1) {
           const newIndex = historyIndex + 1;
@@ -89,6 +154,12 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
         }
         break;
       case 'ArrowDown':
+        // If suggestions are visible, let CommandSuggestions handle arrow navigation
+        if (showSuggestions) {
+          // Let the suggestions component handle it
+          return;
+        }
+        
         e.preventDefault();
         if (historyIndex > 0) {
           const newIndex = historyIndex - 1;
@@ -99,24 +170,26 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
           setInput('');
         }
         break;
-      case 'Tab':
-        e.preventDefault();
-        // Future: Implement autocomplete
-        break;
       case 'Escape':
         e.preventDefault();
-        setInput('');
-        setHistoryIndex(-1);
+        // Close suggestions first if open
+        if (showSuggestions) {
+          setShowSuggestions(false);
+        } else {
+          setInput('');
+          setHistoryIndex(-1);
+        }
         break;
       case 'l':
         // Ctrl+L to clear (common terminal shortcut)
         if (e.ctrlKey) {
           e.preventDefault();
           setInput('');
+          setShowSuggestions(false);
         }
         break;
     }
-  }, [handleSubmit, history, historyIndex]);
+  }, [handleSubmit, history, historyIndex, showSuggestions, input]);
 
   const handleTouchStart = useCallback(() => {
     // Ensure input stays focused on mobile touch
@@ -131,59 +204,77 @@ export function InputLine({ onSubmit, isDisabled, placeholder }: InputLineProps)
   return (
     <div 
       ref={containerRef}
-      className="flex items-center gap-2 px-4 py-3 
-                 bg-hacker-bgSecondary border-t border-hacker-border
-                 pb-safe-b cursor-text" // Safe area for home indicator
-      onTouchStart={handleTouchStart}
-      onClick={handleContainerClick}
+      className="relative flex flex-col"
     >
-      {/* Terminal Icon - Touch target sized */}
-      <div className={`${TOUCH_TARGET_SIZE} flex items-center justify-center flex-shrink-0`}>
-        <Terminal className="w-5 h-5 text-hacker-primary" />
-      </div>
-      
-      {/* Prompt */}
-      <span className="text-hacker-primary font-bold select-none">centopeia&gt;</span>
-      
-      {/* Input Field */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={isDisabled}
-        placeholder={placeholder}
-        className={`flex-1 bg-transparent text-hacker-text font-mono text-base
-                   focus:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary/50
-                   focus-visible:ring-inset rounded-sm
-                   placeholder:text-hacker-textDim
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   ${TOUCH_TARGET_SIZE} px-2`}
-        spellCheck={false}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        enterKeyHint="send"
-        inputMode="text"
+      {/* Command Suggestions Dropdown */}
+      <CommandSuggestions
+        input={input}
+        suggestions={DEFAULT_COMMAND_SUGGESTIONS}
+        onSelect={handleSuggestionSelect}
+        onClose={handleSuggestionClose}
+        isVisible={showSuggestions}
       />
-      
-      {/* Submit Button - Large touch target with feedback */}
-      <button
-        onClick={handleSubmit}
-        disabled={isDisabled || !input.trim()}
-        className={`${TOUCH_TARGET_SIZE} flex items-center justify-center
-                   text-hacker-primary 
-                   active:bg-hacker-primary/20 
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
-                   focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary
-                   transition-colors duration-75 rounded-lg
-                   touch-manipulation`}
-        aria-label="Enviar mensaje"
+
+      {/* Input Line Container */}
+      <div 
+        className="flex items-center gap-2 px-4 py-3 
+                   bg-hacker-bgSecondary border-t border-hacker-border
+                   pb-safe-b cursor-text" // Safe area for home indicator
+        onTouchStart={handleTouchStart}
+        onClick={handleContainerClick}
       >
-        <ArrowRight className="w-5 h-5" />
-      </button>
+        {/* Terminal Icon - Touch target sized */}
+        <div className={`${TOUCH_TARGET_SIZE} flex items-center justify-center flex-shrink-0`}>
+          <Terminal className="w-5 h-5 text-hacker-primary" />
+        </div>
+        
+        {/* Prompt */}
+        <span className="text-hacker-primary font-bold select-none">centopeia&gt;</span>
+        
+        {/* Input Field */}
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          disabled={isDisabled}
+          placeholder={placeholder}
+          className={`flex-1 bg-transparent text-hacker-text font-mono text-base
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary/50
+                     focus-visible:ring-inset rounded-sm
+                     placeholder:text-hacker-textDim
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     ${TOUCH_TARGET_SIZE} px-2`}
+          spellCheck={false}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          enterKeyHint="send"
+          inputMode="text"
+          aria-label="Entrada de comandos"
+          aria-autocomplete="list"
+          aria-controls={showSuggestions ? 'command-suggestions' : undefined}
+          aria-expanded={showSuggestions}
+        />
+        
+        {/* Submit Button - Large touch target with feedback */}
+        <button
+          onClick={handleSubmit}
+          disabled={isDisabled || !input.trim()}
+          className={`${TOUCH_TARGET_SIZE} flex items-center justify-center
+                     text-hacker-primary 
+                     active:bg-hacker-primary/20 
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                     focus-visible:ring-offset-2 focus-visible:ring-offset-hacker-bgSecondary
+                     transition-colors duration-75 rounded-lg
+                     touch-manipulation`}
+          aria-label="Enviar mensaje"
+        >
+          <ArrowRight className="w-5 h-5" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Terminal, Play, Brain, Target, Zap, Dice5,
-  MessageSquare, ChevronRight, Sparkles, Briefcase,
-  Clock, Trophy, Flame
+  Play, Brain, Target, Zap, Dice5,
+  Sparkles, Trophy, Briefcase, Terminal, ChevronRight
 } from 'lucide-react';
-import type { LearningPath, Skill, MicroModule } from '../../data/learningPaths';
+import type { LearningPath } from '../../data/learningPaths';
 import type { InterviewQuestion } from '../../data/interviewQuestions';
 import { getRandomQuestions } from '../../data/interviewQuestions';
-import { LEARNING_PATHS, getNextModule } from '../../data/learningPaths';
+import { getNextModule } from '../../data/learningPaths';
 
 interface TerminalHomeProps {
   onCommand: (command: string) => void;

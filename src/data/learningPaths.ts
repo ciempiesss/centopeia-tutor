@@ -61,14 +61,153 @@ const qaPath: LearningPath = {
       progress: 0,
       modules: [
         {
-          id: 'qa-1-1',
-          title: '¿Qué es el Testing?',
-          duration: 20,
-          description: 'Introducción a QA vs QC vs Testing',
-          objectives: ['Entender diferencia entre QA y QC', 'Conocer el ciclo STLC'],
-          content: 'El testing es el proceso de evaluar un sistema para encontrar diferencias entre el comportamiento esperado y el actual. QA (Quality Assurance) es preventivo, QC (Quality Control) es correctivo.',
-          exercise: 'Investiga 3 fallos de software famosos y cómo testing los habría prevenido.',
-          checkQuestion: '¿Cuál es la diferencia clave entre QA y QC?',
+          id: 'qa-v2-1-1',
+          title: 'QA vs QC vs Testing: El Día a Día Real',
+          duration: 30,
+          description: 'Entiende tu rol real en un equipo de desarrollo profesional',
+          objectives: [
+            'Diferenciar QA, QC y Testing con ejemplos reales de trabajo',
+            'Comprender el ciclo STLC en metodologías Agile/Scrum',
+            'Identificar tus responsabilidades en un sprint real',
+            'Conocer herramientas reales: JIRA, TestRail, Confluence'
+          ],
+          content: `🎮 HOOK: Tu Primer Día en el Trabajo
+
+Es lunes 9am. Entras a tu nuevo trabajo como QA Junior en una fintech mexicana. Tu Scrum Master te presenta al equipo: 5 desarrolladores, 1 Product Owner (PO), 1 Scrum Master, y tú. El PO dice: "Tenemos un sprint de 2 semanas para lanzar 'transferencias instantáneas'. ¿Cuándo empiezas a testear?"
+
+¿Qué respondes? ¿Esperas a que terminen de codear? ¿O hay algo que debes hacer AHORA?
+
+Spoiler: Un buen QA empieza el DÍA 1 del sprint, no al final.
+
+📚 CONCEPTO CLARO: Las 3 Caras de la Calidad
+
+En la industria usamos tres términos que suenan similares pero son MUY diferentes:
+
+🛡️ QA (Quality Assurance) = PREVENIR que existan bugs
+• Es PROCESO, no pruebas
+• Define estándares ANTES de que empiece el desarrollo
+• Crea Definition of Ready y Definition of Done
+• Establece qué porcentaje de code coverage se necesita
+• Define si se requiere code review obligatorio
+• Realiza análisis de riesgos antes de codificar
+
+🔍 QC (Quality Control) = DETECTAR bugs existentes
+• Es REVISIÓN del producto terminado
+• Verifica que cumple con los requisitos
+• Decide si el build está listo para production
+• Realiza sign-off antes de releases
+• Mide quality metrics (bugs encontrados, cobertura, etc.)
+
+⚙️ Testing = La ejecución técnica de pruebas
+• Escribir y ejecutar test cases
+• Reportar bugs en herramientas como JIRA
+• Crear datos de prueba (test data)
+• Documentar test evidence (screenshots, videos)
+• Mantener regression suites
+
+🎯 ANALOGÍA: La Construcción de un Puente
+
+Imagina que construyen un puente:
+
+QA = El ingeniero que dice: "Necesitamos usar acero grado A, inspector certificado, y pruebas de carga antes de abrir." (Previene problemas con procesos)
+
+QC = El inspector que revisa: "El puente está construido según los planos, la soldadura pasó pruebas, podemos abrirlo al público." (Detecta problemas en el resultado)
+
+Tester = El técnico que ejecuta: "Aplicamos 50 toneladas de presión en el punto A, medimos deflexión de 2cm, dentro de tolerancia." (Ejecuta pruebas técnicas)`,
+          
+          exercise: `🎯 EJERCICIO: Tu Primer Sprint Planning
+
+Vas a simular tu participación en una reunión real de Sprint Planning.
+
+📋 MICRO-PASO 1/4 ⏱️ 5 minutos
+Contexto: Eres QA en una app de delivery de comida mexicana (como Rappi).
+
+El Product Owner presenta esta user story:
+
+"Como usuario, quiero poder aplicar códigos de descuento en mi orden para pagar menos por mi comida."
+
+Acceptance Criteria:
+• El código debe aplicarse antes de pagar
+• El descuento se ve reflejado en el total
+• Si el código es inválido, mostrar error
+
+💡 Tu misión: Identificar 3 preguntas que harías en la planning para prevenir bugs (actuando como QA, no solo como tester).
+
+Ejemplo de respuesta (no copies esta, piensa la tuya):
+"¿Qué pasa si el usuario aplica dos códigos? ¿Se acumulan o solo uno?"
+
+Escribe tus 3 preguntas:
+1. _______________________________________________
+2. _______________________________________________
+3. _______________________________________________
+
+✅ ¿Listo? Avanza al paso 2.
+
+📋 MICRO-PASO 2/4 ⏱️ 5 minutos
+Ahora juegas el rol de Tester (no QA).
+
+Basándote en la misma user story del descuento, escribe:
+• 2 test cases positivos (happy path)
+• 2 test cases negativos (error handling)
+
+Formato simple:
+Test Case: [Nombre]
+Steps: 1. ... 2. ... 3. ...
+Expected: ...
+
+Ejemplo (no copies):
+Test Case: Aplicar código válido
+Steps: 1. Agregar producto al carrito 2. Ir a checkout 3. Ingresar "DESCUENTO10" 4. Click Aplicar
+Expected: Total se reduce 10%, mensaje "Código aplicado"
+
+Tus 4 test cases:
+1. _______________________________________________
+2. _______________________________________________
+3. _______________________________________________
+4. _______________________________________________
+
+🎉 ¡Buen trabajo! Estás pensando como tester profesional.
+
+📋 MICRO-PASO 3/4 ⏱️ 5 minutos
+
+Investiga: Busca qué es JIRA y por qué es la herramienta #1 para reportar bugs en la industria. Escribe 3 características que la hacen útil para QA.`,
+          
+          checkQuestion: `🎯 CHECK PRÁCTICO: El Bug que Causó un Incidente
+
+Escenario real: Eres QA Lead en una fintech mexicana. Es viernes 2pm. El equipo quiere hacer deploy de "transferencias instantáneas" a producción. El sprint termina hoy.
+
+Un developer te dice: "Todo está probado, solo son 3 líneas de código que cambian, no puede fallar nada. Vamos a producción y nos vamos de fin de semana."
+
+Tú revisas JIRA y ves:
+• ✅ Unit tests pasan
+• ✅ Code review aprobado
+• ⚠️ Solo hiciste smoke tests, no regression completa
+• ❌ No hay test cases escritos para transferencias (solo pruebas ad-hoc)
+
+¿Qué haces?
+
+A) Confías en el dev y apruebas el deploy. Son solo 3 líneas.
+B) Dices que NO hasta hacer regression testing completo, aunque trabajes hasta tarde el viernes.
+C) Sugieres deploy a staging el viernes, pero producción el lunes después de regression testing durante el fin de semana.
+D) Pides que alguien más (otro QA o el dev) escriba test cases mientras tú haces regression.
+
+✅ RESPUESTA CORRECTA: C
+
+EXPLICACIÓN PROFESIONAL:
+
+La opción C muestra pensamiento de QA profesional:
+• Balancea velocidad vs calidad (no bloqueas el deploy a staging)
+• Prioriza mitigación de riesgo (dinero de usuarios > presión de tiempo)
+• Protege al equipo de un incidente en producción un viernes por la tarde
+• Mantiene professional accountability (tú firmas con tu nombre el quality)
+
+Por qué las otras están mal:
+• A: "Solo 3 líneas" es famosa última frase antes de un outage. Knight Capital perdió $440 millones con "un pequeño cambio".
+• B: Correcto en principio, pero innecesariamente rígido. Staging puede recibir el código hoy.
+• D: Pasar responsabilidad no es profesional. Eres el QA, tú decides qué nivel de testing es adecuado.
+
+Lección: En QA, tu trabajo es proteger al usuario Y al equipo. Un buen QA sabe decir "sí, pero..." en lugar de solo "no".`,
+          
           status: 'available',
         },
         {

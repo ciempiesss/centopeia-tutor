@@ -38,8 +38,9 @@ function MobileNavigation({
               className={`flex flex-col items-center justify-center flex-1 h-full
                          transition-colors duration-200 min-h-[44px]
                          ${isActive ? 'text-hacker-primary' : 'text-hacker-textMuted'}`}
+              aria-label={tab.label}
             >
-              <Icon className="w-5 h-5 mb-1" />
+              <Icon className="w-5 h-5 mb-1" aria-hidden="true" />
               <span className="text-[10px] font-medium">{tab.label}</span>
             </button>
           );
@@ -81,8 +82,9 @@ function DesktopSidebar({
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-2 rounded hover:bg-hacker-bgTertiary transition-colors"
+          aria-label={isCollapsed ? 'Expandir sidebar' : 'Contraer sidebar'}
         >
-          {isCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
+          {isCollapsed ? <Menu className="w-5 h-5" aria-hidden="true" /> : <X className="w-5 h-5" aria-hidden="true" />}
         </button>
       </div>
 
@@ -92,20 +94,21 @@ function DesktopSidebar({
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3
-                         transition-colors duration-200
-                         ${isActive 
-                           ? 'bg-hacker-primary/10 text-hacker-primary border-r-2 border-hacker-primary' 
-                           : 'text-hacker-textMuted hover:bg-hacker-bgTertiary hover:text-hacker-text'
-                         }
-                         ${isCollapsed ? 'justify-center' : ''}`}
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {!isCollapsed && <span className="font-medium">{tab.label}</span>}
-            </button>
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={`w-full flex items-center gap-3 px-4 py-3
+                       transition-colors duration-200
+                       ${isActive 
+                         ? 'bg-hacker-primary/10 text-hacker-primary border-r-2 border-hacker-primary' 
+                         : 'text-hacker-textMuted hover:bg-hacker-bgTertiary hover:text-hacker-text'
+                       }
+                       ${isCollapsed ? 'justify-center' : ''}`}
+            aria-label={tab.label}
+          >
+            <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+            {!isCollapsed && <span className="font-medium">{tab.label}</span>}
+          </button>
           );
         })}
       </nav>

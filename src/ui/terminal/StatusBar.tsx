@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Wifi, WifiOff, Clock, Target, Zap, Brain, MoreHorizontal } from 'lucide-react';
+import { useMemo } from 'react';
+import { Wifi, WifiOff, Target, Zap, Brain, Home } from 'lucide-react';
 import { useNetworkStatus } from '../../core/audhd/useNetworkStatus';
 
 interface StatusBarProps {
@@ -11,6 +11,31 @@ interface StatusBarProps {
   };
   messageCount: number;
   llmConnected?: boolean;
+  onHomeClick?: () => void;
+  totalTime?: number;
+}
+
+// Visual time blocks for focus mode (AUDHD-friendly)
+function VisualTimeBlocks({ timeRemaining, totalTime }: { timeRemaining: number; totalTime: number }) {
+  const totalBlocks = 8;
+  const filledBlocks = Math.max(0, Math.min(totalBlocks, Math.ceil((timeRemaining / totalTime) * totalBlocks)));
+  
+  return (
+    <div className="flex gap-1 mt-2">
+      {Array.from({ length: totalBlocks }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1.5 flex-1 rounded-full transition-all duration-1000
+                     ${i < filledBlocks 
+                       ? i < totalBlocks / 2 
+                         ? 'bg-hacker-primary'      // Green for first half
+                         : 'bg-hacker-accent'        // Yellow for second half
+                       : 'bg-hacker-bgTertiary'      // Empty
+                     }`}
+        />
+      ))}
+    </div>
+  );
 }
 
 export function StatusBar({ 
@@ -18,7 +43,9 @@ export function StatusBar({
   timeRemaining, 
   focusStats,
   messageCount,
-  llmConnected = false
+  llmConnected = false,
+  onHomeClick,
+  totalTime = 25 * 60
 }: StatusBarProps) {
   const { isOnline, connectionType } = useNetworkStatus();
 
@@ -39,8 +66,23 @@ export function StatusBar({
       {/* Main content - Responsive layout */}
       <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4">
         
-        {/* Left: Connection & AI Status */}
+        {/* Left: Connection & AI Status + Home Button */}
         <div className="flex items-center gap-2 sm:gap-4">
+          {/* Home Button */}
+          {onHomeClick && (
+            <button
+              onClick={onHomeClick}
+              className="p-1.5 rounded hover:bg-hacker-bgTertiary active:bg-hacker-bgTertiary/80
+                         text-hacker-textDim hover:text-hacker-primary
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary
+                         transition-colors"
+              title="Volver al inicio"
+              aria-label="Volver al inicio"
+            >
+              <Home className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Online/Offline Indicator */}
           <div 
             className={`flex items-center gap-1.5 px-2 py-1 rounded 
@@ -73,6 +115,9 @@ export function StatusBar({
               <span className="text-hacker-primary font-bold text-xs sm:text-sm tabular-nums">
                 {formatTime(timeRemaining)}
               </span>
+              <span className="text-hacker-textDim text-xs hidden sm:inline">
+                / {formatTime(totalTime)}
+              </span>
             </div>
           )}
         </div>
@@ -84,8 +129,8 @@ export function StatusBar({
             <span>{focusStats.completedToday} sprints</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" />
-            <span>{Math.round(focusStats.totalMinutes)}min</span>
+            <span className="text-hacker-primary font-bold">{Math.round(focusStats.totalMinutes)}min</span>
+            <span>focus</span>
           </div>
         </div>
 
@@ -105,29 +150,12 @@ export function StatusBar({
             <span className="text-hacker-primary font-bold tabular-nums">{messageCount}</span>
             <span className="hidden sm:inline">mensajes</span>
           </div>
-
-          {/* More menu button (mobile) */}
-          <button 
-            className="sm:hidden p-1.5 rounded hover:bg-hacker-bgTertiary active:bg-hacker-bgTertiary/80
-                       min-h-[32px] min-w-[32px] flex items-center justify-center
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hacker-primary"
-            aria-label="Más opciones"
-          >
-            <MoreHorizontal className="w-4 h-4 text-hacker-textMuted" />
-          </button>
         </div>
       </div>
 
-      {/* Optional: Progress bar for active sprint */}
+      {/* Visual Time Blocks for active sprint */}
       {isFocusActive && (
-        <div className="mt-2 h-0.5 bg-hacker-border rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-hacker-primary transition-all duration-1000 ease-linear"
-            style={{ 
-              width: `${(timeRemaining / (25 * 60)) * 100}%` 
-            }}
-          />
-        </div>
+        <VisualTimeBlocks timeRemaining={timeRemaining} totalTime={totalTime} />
       )}
     </div>
   );
