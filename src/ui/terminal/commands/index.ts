@@ -9,6 +9,28 @@ import { practiceCommand } from './practice';
 import { quizCommand } from './quiz';
 import { randomCommand } from './random';
 
+// Wrap command handlers with error handling
+const wrapCommand = (
+  handler: CommandHandler,
+  commandName: string
+): CommandHandler => {
+  return async (args: string[], context?: CommandContext): Promise<string> => {
+    try {
+      return await handler(args, context);
+    } catch (error) {
+      console.error(`[Command] Error in ${commandName}:`, error);
+
+      // Return user-friendly error message
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Error desconocido';
+
+      return `[red]Error en comando ${commandName}:[/red] ${errorMessage}\n\n` +
+             `[dim]Si el problema persiste, recarga la página (F5).[/dim]`;
+    }
+  };
+};
+
 export interface CommandContext {
   sessionId?: string;
 }
@@ -22,29 +44,29 @@ export interface CommandRegistry {
 }
 
 export const commandRegistry: CommandRegistry = {
-  '/help': helpCommand,
-  '/ayuda': helpCommand,
-  '/focus': focusCommand,
-  '/sprint': focusCommand,
-  '/stop': async () => 'Sprint detenido.',
-  '/role': roleCommand,
-  '/rol': roleCommand,
-  '/stats': statsCommand,
-  '/estadisticas': statsCommand,
-  '/learn': learnCommand,
-  '/aprender': learnCommand,
-  '/practice': practiceCommand,
-  '/practica': practiceCommand,
-  '/quiz': quizCommand,
-  '/test': quizCommand,
-  '/config': configCommand,
-  '/configuracion': configCommand,
-  '/micro': microCommand,
-  '/paso': microCommand,
-  '/random': randomCommand,
-  '/aleatorio': randomCommand,
-  '/hint': async () => 'Usa el comando /practice para ejercicios con pistas incluidas.',
-  '/pista': async () => 'Usa el comando /practice para ejercicios con pistas incluidas.',
+  '/help': wrapCommand(helpCommand, '/help'),
+  '/ayuda': wrapCommand(helpCommand, '/ayuda'),
+  '/focus': wrapCommand(focusCommand, '/focus'),
+  '/sprint': wrapCommand(focusCommand, '/sprint'),
+  '/stop': wrapCommand(async () => 'Sprint detenido.', '/stop'),
+  '/role': wrapCommand(roleCommand, '/role'),
+  '/rol': wrapCommand(roleCommand, '/rol'),
+  '/stats': wrapCommand(statsCommand, '/stats'),
+  '/estadisticas': wrapCommand(statsCommand, '/estadisticas'),
+  '/learn': wrapCommand(learnCommand, '/learn'),
+  '/aprender': wrapCommand(learnCommand, '/aprender'),
+  '/practice': wrapCommand(practiceCommand, '/practice'),
+  '/practica': wrapCommand(practiceCommand, '/practica'),
+  '/quiz': wrapCommand(quizCommand, '/quiz'),
+  '/test': wrapCommand(quizCommand, '/test'),
+  '/config': wrapCommand(configCommand, '/config'),
+  '/configuracion': wrapCommand(configCommand, '/configuracion'),
+  '/micro': wrapCommand(microCommand, '/micro'),
+  '/paso': wrapCommand(microCommand, '/paso'),
+  '/random': wrapCommand(randomCommand, '/random'),
+  '/aleatorio': wrapCommand(randomCommand, '/aleatorio'),
+  '/hint': wrapCommand(async () => 'Usa el comando /practice para ejercicios con pistas incluidas.', '/hint'),
+  '/pista': wrapCommand(async () => 'Usa el comando /practice para ejercicios con pistas incluidas.', '/pista'),
 };
 
 // Default handler for unknown commands

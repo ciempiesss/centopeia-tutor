@@ -27,7 +27,9 @@ function MobilePathCard({
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const Icon = iconMap[path.icon as keyof typeof iconMap] || Code;
+  // Safe icon lookup with runtime validation and type safety
+  const iconKey = path.icon as keyof typeof iconMap;
+  const Icon = (iconKey in iconMap ? iconMap[iconKey] : Code) as React.ElementType;
   const progress = calculatePathProgress(path);
   
   return (
@@ -94,7 +96,9 @@ function DesktopPathCard({
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const Icon = iconMap[path.icon as keyof typeof iconMap] || Code;
+  // Safe icon lookup with runtime validation and type safety
+  const iconKey = path.icon as keyof typeof iconMap;
+  const Icon = (iconKey in iconMap ? iconMap[iconKey] : Code) as React.ElementType;
   const progress = calculatePathProgress(path);
   
   return (

@@ -47,18 +47,27 @@ export const configCommand: CommandHandler = async (args) => {
       // Save API key securely (not in profile)
       await secureStorage.setApiKey(value);
       return `✅ API key configurada de forma segura. [green]Reinicia la app para activar el modo IA.[/green]`;
-    case 'pomodoro':
-      return `✅ Sprint de trabajo configurado a [green]${value} minutos[/green]`;
-    case 'break':
-      return `✅ Descanso configurado a [green]${value} minutos[/green]`;
-    case 'rsd':
-      return `✅ Sensibilidad RSD configurada a [green]${value}[/green]`;
-    case 'sounds':
-      return `✅ Sonidos ${value === 'on' ? '[green]activados[/green]' : '[yellow]desactivados[/yellow]'}`;
-    case 'theme':
-      return `✅ Tema cambiado a [green]${value}[/green]`;
-    case 'font':
-      return `✅ Tamaño de fuente: [green]${value}px[/green]`;
+    case 'pomodoro': {
+      const pomodoroMinutes = parseInt(value || '15', 10);
+      if (isNaN(pomodoroMinutes) || pomodoroMinutes < 1 || pomodoroMinutes > 60) {
+        return `[red]Error:[/red] Valor inválido. Usa: /config pomodoro [1-60]`;
+      }
+      return `✅ Sprint de trabajo configurado a [green]${pomodoroMinutes} minutos[/green]`;
+    }
+    case 'break': {
+      const breakMinutes = parseInt(value || '5', 10);
+      if (isNaN(breakMinutes) || breakMinutes < 1 || breakMinutes > 30) {
+        return `[red]Error:[/red] Valor inválido. Usa: /config break [1-30]`;
+      }
+      return `✅ Descanso configurado a [green]${breakMinutes} minutos[/green]`;
+    }
+    case 'font': {
+      const fontSize = parseInt(value || '14', 10);
+      if (isNaN(fontSize) || fontSize < 10 || fontSize > 24) {
+        return `[red]Error:[/red] Tamaño inválido. Usa: /config font [10-24]`;
+      }
+      return `✅ Tamaño de fuente: [green]${fontSize}px[/green]`;
+    }
     case 'sync':
       return `✅ Sincronización ${value === 'on' ? '[green]activada[/green]' : '[yellow]desactivada[/yellow]'}`;
     default:

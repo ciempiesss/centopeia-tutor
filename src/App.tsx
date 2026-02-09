@@ -1,12 +1,15 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { Terminal } from './ui/terminal/Terminal';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
+import { usePyodidePreload } from './hooks/usePyodidePreload';
+import { useResponsive } from './hooks/useResponsive';
+import { LeftPanel } from './ui/components/LeftPanel';
+import { RightPanel } from './ui/components/RightPanel';
 
 // Lazy loaded components
 const PathSelector = lazy(() => import('./ui/components/PathSelector').then(m => ({ default: m.PathSelector })));
 const LearningPathView = lazy(() => import('./ui/components/LearningPathView').then(m => ({ default: m.LearningPathView })));
-const AdaptiveLayout = lazy(() => import('./ui/components/AdaptiveLayout').then(m => ({ default: m.AdaptiveLayout })));
-import { LEARNING_PATHS, getPathById } from './data/learningPaths';
+import { LEARNING_PATHS, getPathById, getNextModule } from './data/learningPaths';
 import type { LearningPath, MicroModule } from './data/learningPaths';
 import type { UserProfile } from './types';
 import { usePlatform, useKeyboardShortcuts } from './hooks/usePlatform';
@@ -24,27 +27,67 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  const { isDesktop } = usePlatform();
+  const { isDesktop } = useResponsive();
+  const { isPreloaded, isPreloading } = usePyodidePreload(3000);
+
+  // Stats for panels
+  const [stats, setStats] = useState({
+    completedModules: 0,
+    totalStudyTime: 0,
+    currentStreak: 1,
+  });
+
+  // Load stats from database
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const completed = await db.getCompletedModulesCount();
+        const totalTime = await db.getTotalStudyTime();
+        setStats({
+          completedModules: completed,
+          totalStudyTime: totalTime,
+          currentStreak: 1, // TODO: Implement streak tracking
+        });
+      } catch (error) {
+        console.error('[App] Error loading stats:', error);
+      }
+    };
+    loadStats();
+  }, []);
 
   // Initialize app
   useEffect(() => {
+    let isCancelled = false;
+    
     const init = async () => {
-      await db.initialize();
-      
-      // Load saved path selection
-      const profile = await db.getUserProfile();
-      if (profile?.roleFocus && profile.roleFocus !== 'exploring') {
-        const savedPath = getPathById(profile.roleFocus);
-        if (savedPath) {
-          setSelectedPath(savedPath);
+      try {
+        await db.initialize();
+        
+        const profile = await db.getUserProfile();
+        if (!isCancelled) {
+          if (profile?.roleFocus && profile.roleFocus !== 'exploring') {
+            const savedPath = getPathById(profile.roleFocus);
+            if (savedPath) {
+              setSelectedPath(savedPath);
+            }
+          }
+          
+          setUserProfile(profile);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('[App] Initialization error:', error);
+        if (!isCancelled) {
+          setIsLoading(false);
         }
       }
-      
-      setUserProfile(profile);
-      setIsLoading(false);
     };
     
     init();
+    
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   // Keyboard shortcuts
@@ -63,7 +106,6 @@ function App() {
   const handleSelectPath = async (path: LearningPath) => {
     setSelectedPath(path);
     
-    // Save preference - map path.id to roleFocus type
     if (userProfile) {
       const roleMap: Record<string, 'qa_tester' | 'analyst' | 'developer'> = {
         'qa': 'qa_tester',
@@ -78,8 +120,29 @@ function App() {
   };
 
   const handleStartModule = (module: { id: string; title: string }) => {
-    // Vista de módulo completa pendiente de implementar
     console.debug('[App] Módulo iniciado:', module.id);
+  };
+
+  const handleCommand = (command: string) => {
+    console.log('[App] Quick action command:', command);
+    // TODO: Implement command routing to terminal
+  };
+
+  const handleStartSprint = (minutes: number) => {
+    console.log('[App] Start sprint:', minutes, 'minutes');
+    // TODO: Implement sprint timer
+  };
+
+  // Get next module for RightPanel
+  const getNextModuleForPath = (): MicroModule | null => {
+    if (!selectedPath) return null;
+    return getNextModule(selectedPath);
+  };
+
+  // Calculate total modules for current path
+  const getTotalModulesForPath = (): number => {
+    if (!selectedPath) return 0;
+    return selectedPath.skills.reduce((total, skill) => total + skill.modules.length, 0);
   };
 
   // Render content based on current view
@@ -156,7 +219,14 @@ function App() {
       <div className="h-screen w-screen bg-hacker-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-hacker-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-hacker-primary font-mono">Iniciando Centopeia...</p>
+          <p className="text-hacker-primary font-mono mb-2">Iniciando Centopeia...</p>
+          <p className="text-hacker-textMuted text-sm">
+            {isPreloaded 
+              ? '✓ Python runtime listo' 
+              : isPreloading 
+                ? 'Cargando Python runtime...' 
+                : 'Cargando módulos de tutoría'}
+          </p>
         </div>
       </div>
     );
@@ -169,101 +239,107 @@ function App() {
 
   return (
     <ErrorBoundary onReset={handleReset}>
-      {!isDesktop ? (
       <div className="h-screen w-screen bg-hacker-bg overflow-hidden flex flex-col">
         {/* Header */}
-        <header className="bg-hacker-bgSecondary border-b border-hacker-border px-4 py-3">
+        <header className="bg-hacker-bgSecondary border-b border-hacker-border px-4 lg:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">
-            <h1 className="font-bold text-hacker-primary text-lg">CENTOPEIA</h1>
-            {selectedPath && currentView !== 'paths' && (
-              <button
-                onClick={() => setCurrentView('paths')}
-                className="text-sm text-hacker-textMuted flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Cambiar rol
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* Content */}
-        <main className="flex-1 overflow-hidden">
-          {renderContent()}
-        </main>
-
-        {/* Bottom Navigation */}
-        <nav className="bg-hacker-bgSecondary border-t border-hacker-border pb-safe-b">
-          <div className="flex justify-around items-center h-16">
-            <NavButton
-              icon={Code}
-              label="Terminal"
-              isActive={currentView === 'terminal'}
-              onClick={() => setCurrentView('terminal')}
-            />
-            <NavButton
-              icon={BookOpen}
-              label={selectedPath ? 'Mi Ruta' : 'Rutas'}
-              isActive={currentView === 'learn' || currentView === 'paths'}
-              onClick={() => setCurrentView(selectedPath ? 'learn' : 'paths')}
-            />
-            <NavButton
-              icon={BarChart3}
-              label="Progreso"
-              isActive={currentView === 'stats'}
-              onClick={() => setCurrentView('stats')}
-            />
-          </div>
-        </nav>
-      </div>
-    ) : (
-    <Suspense fallback={<LoadingFallback />}>
-      <AdaptiveLayout>
-        <div className="h-full flex flex-col">
-        {/* Desktop Header */}
-        <header className="bg-hacker-bgSecondary border-b border-hacker-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="font-bold text-hacker-primary text-xl">CENTOPEIA</h1>
-              <span className="text-hacker-textDim">|</span>
-              <span className="text-hacker-textMuted">
-                {currentView === 'terminal' && 'Terminal Interactiva'}
-                {currentView === 'paths' && 'Selección de Rol'}
-                {currentView === 'learn' && selectedPath && `Aprendiendo: ${selectedPath.title}`}
-                {currentView === 'stats' && 'Estadísticas'}
-              </span>
+            <div className="flex items-center gap-2 lg:gap-4">
+              <h1 className="font-bold text-hacker-primary text-lg lg:text-xl">CENTOPEIA</h1>
+              {isDesktop && (
+                <>
+                  <span className="text-hacker-textDim">|</span>
+                  <span className="text-hacker-textMuted">
+                    {currentView === 'terminal' && 'Terminal Interactiva'}
+                    {currentView === 'paths' && 'Selección de Rol'}
+                    {currentView === 'learn' && selectedPath && `Aprendiendo: ${selectedPath.title}`}
+                    {currentView === 'stats' && 'Estadísticas'}
+                  </span>
+                </>
+              )}
             </div>
             
             {selectedPath && (
               <div className="flex items-center gap-3">
-                <div 
-                  className="px-3 py-1 rounded-full text-sm font-medium"
-                  style={{ 
-                    backgroundColor: `${selectedPath.color}20`,
-                    color: selectedPath.color 
-                  }}
-                >
-                  {selectedPath.title}
-                </div>
+                {isDesktop && (
+                  <div 
+                    className="px-3 py-1 rounded-full text-sm font-medium hidden lg:block"
+                    style={{ 
+                      backgroundColor: `${selectedPath.color}20`,
+                      color: selectedPath.color 
+                    }}
+                  >
+                    {selectedPath.title}
+                  </div>
+                )}
                 <button
                   onClick={() => setCurrentView('paths')}
-                  className="text-sm text-hacker-textMuted hover:text-hacker-text transition-colors"
+                  className="text-sm text-hacker-textMuted flex items-center gap-1 hover:text-hacker-text transition-colors"
                 >
-                  Cambiar
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="hidden lg:inline">Cambiar</span>
                 </button>
               </div>
             )}
           </div>
         </header>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
-          {renderContent()}
+        {/* Main content area - 3 columns on desktop */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Panel - only desktop */}
+          {isDesktop && (
+            <LeftPanel 
+              completedModules={stats.completedModules}
+              totalStudyTime={stats.totalStudyTime}
+              currentStreak={stats.currentStreak}
+              onStartSprint={handleStartSprint}
+              onQuickAction={(action) => handleCommand(`/${action}`)}
+            />
+          )}
+          
+          {/* Center content */}
+          <main className="flex-1 overflow-hidden">
+            {renderContent()}
+          </main>
+          
+          {/* Right Panel - only desktop */}
+          {isDesktop && (
+            <RightPanel
+              selectedPath={selectedPath}
+              completedModules={stats.completedModules}
+              totalModules={getTotalModulesForPath()}
+              nextModule={getNextModuleForPath()}
+              onStartModule={(moduleId) => handleStartModule({ id: moduleId, title: '' })}
+              onViewPath={() => setCurrentView('paths')}
+            />
+          )}
         </div>
-        </div>
-      </AdaptiveLayout>
-    </Suspense>
-    )}
+        
+        {/* Bottom Navigation - only mobile */}
+        {!isDesktop && (
+          <nav className="bg-hacker-bgSecondary border-t border-hacker-border pb-safe-b">
+            <div className="flex justify-around items-center h-16">
+              <NavButton
+                icon={Code}
+                label="Terminal"
+                isActive={currentView === 'terminal'}
+                onClick={() => setCurrentView('terminal')}
+              />
+              <NavButton
+                icon={BookOpen}
+                label={selectedPath ? 'Mi Ruta' : 'Rutas'}
+                isActive={currentView === 'learn' || currentView === 'paths'}
+                onClick={() => setCurrentView(selectedPath ? 'learn' : 'paths')}
+              />
+              <NavButton
+                icon={BarChart3}
+                label="Progreso"
+                isActive={currentView === 'stats'}
+                onClick={() => setCurrentView('stats')}
+              />
+            </div>
+          </nav>
+        )}
+      </div>
     </ErrorBoundary>
   );
 }

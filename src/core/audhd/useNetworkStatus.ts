@@ -13,21 +13,28 @@ export function useNetworkStatus(): NetworkStatus {
   });
 
   useEffect(() => {
+    let isMounted = true;
+    let browserListeners: { remove: () => void } | null = null;
+
     // Get initial status
     const getStatus = async () => {
       try {
         const networkStatus = await Network.getStatus();
-        setStatus({
-          isOnline: networkStatus.connected,
-          connectionType: networkStatus.connectionType || 'unknown',
-        });
+        if (isMounted) {
+          setStatus({
+            isOnline: networkStatus.connected,
+            connectionType: networkStatus.connectionType || 'unknown',
+          });
+        }
       } catch (error) {
-        console.error('Error getting network status:', error);
-        // Fallback to browser API
-        setStatus({
-          isOnline: navigator.onLine,
-          connectionType: 'unknown',
-        });
+        console.error('[useNetworkStatus] Error getting network status:', error);
+        if (isMounted) {
+          // Fallback to browser API
+          setStatus({
+            isOnline: navigator.onLine,
+            connectionType: 'unknown',
+          });
+        }
       }
     };
 
@@ -36,32 +43,51 @@ export function useNetworkStatus(): NetworkStatus {
     // Listen for changes
     const setupListener = async () => {
       try {
-        Network.addListener('networkStatusChange', (networkStatus) => {
-          setStatus({
-            isOnline: networkStatus.connected,
-            connectionType: networkStatus.connectionType || 'unknown',
-          });
+        const listener = await Network.addListener('networkStatusChange', (networkStatus) => {
+          if (isMounted) {
+            setStatus({
+              isOnline: networkStatus.connected,
+              connectionType: networkStatus.connectionType || 'unknown',
+            });
+          }
         });
+        return listener;
       } catch (error) {
-        console.error('Error setting up network listener:', error);
+        console.error('[useNetworkStatus] Error setting up Capacitor listener:', error);
         // Fallback to browser events
-        const handleOnline = () => setStatus(prev => ({ ...prev, isOnline: true }));
-        const handleOffline = () => setStatus(prev => ({ ...prev, isOnline: false }));
+        const handleOnline = () => isMounted && setStatus(prev => ({ ...prev, isOnline: true }));
+        const handleOffline = () => isMounted && setStatus(prev => ({ ...prev, isOnline: false }));
         
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         
-        return () => {
-          window.removeEventListener('online', handleOnline);
-          window.removeEventListener('offline', handleOffline);
+        browserListeners = {
+          remove: () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+          }
         };
+        
+        return browserListeners;
       }
     };
 
-    const cleanupPromise = setupListener();
+    const listenerPromise = setupListener();
 
     return () => {
-      cleanupPromise.then(cleanup => cleanup?.());
+      isMounted = false;
+      // Cleanup both Capacitor and browser listeners
+      listenerPromise.then(listener => {
+        if (listener && 'remove' in listener) {
+          listener.remove();
+        }
+      }).catch(err => {
+        console.warn('[useNetworkStatus] Error during cleanup:', err);
+      });
+      
+      if (browserListeners) {
+        browserListeners.remove();
+      }
     };
   }, []);
 

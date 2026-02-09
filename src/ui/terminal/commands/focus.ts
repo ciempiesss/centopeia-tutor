@@ -1,10 +1,21 @@
 import type { CommandHandler } from './index';
 
+// Valid input ranges for focus sprint
+const MIN_FOCUS_MINUTES = 1;
+const MAX_FOCUS_MINUTES = 120;
+const DEFAULT_FOCUS_MINUTES = 15;
+
 export const focusCommand: CommandHandler = async (args) => {
-  const minutes = args[0] ? parseInt(args[0], 10) : 15;
+  // Parse and validate minutes with strict checking
+  let minutes = DEFAULT_FOCUS_MINUTES;
   
-  if (isNaN(minutes) || minutes < 1 || minutes > 120) {
-    return `[red]Error:[/red] Minutos inválidos. Usa: /focus [1-120]`;
+  if (args[0]) {
+    const parsed = parseInt(args[0], 10);
+    if (!isNaN(parsed) && parsed >= MIN_FOCUS_MINUTES && parsed <= MAX_FOCUS_MINUTES) {
+      minutes = parsed;
+    } else {
+      return `[red]Error:[/red] Minutos inválidos. Usa: /focus [${MIN_FOCUS_MINUTES}-${MAX_FOCUS_MINUTES}]`;
+    }
   }
 
   return `

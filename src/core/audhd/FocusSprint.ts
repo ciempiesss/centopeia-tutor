@@ -41,6 +41,8 @@ export function useFocusSprint() {
   });
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const shouldCompleteRef = useRef(false);
+  const shouldStopRef = useRef(false);
   // const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load stats on mount and restore any active sprint
@@ -52,7 +54,7 @@ export function useFocusSprint() {
     LocalNotifications.requestPermissions();
     
     // Listen for app state changes
-    const appStateListener = App.addListener('appStateChange', async ({ isActive }: { isActive: boolean }) => {
+    const appStateListenerPromise = App.addListener('appStateChange', async ({ isActive }: { isActive: boolean }) => {
       if (isActive) {
         // App came to foreground - restore state
         await restoreSprintState();
@@ -65,8 +67,14 @@ export function useFocusSprint() {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-      appStateListener.then((listener: { remove: () => void }) => listener.remove());
+      // Properly cleanup app state listener
+      appStateListenerPromise.then((listener) => {
+        listener.remove();
+      }).catch(err => {
+        console.warn('[FocusSprint] Error removing app state listener:', err);
+      });
     };
   }, []);
 
@@ -189,13 +197,11 @@ export function useFocusSprint() {
     intervalRef.current = setInterval(() => {
       setState(prev => {
         if (prev.timeRemaining <= 1) {
-          // Use functional update to get latest state
+          // Set ref instead of calling function directly to avoid race condition
           if (prev.isBreak) {
-            // Break completed
-            stopSprint();
+            shouldStopRef.current = true;
           } else {
-            // Work sprint completed
-            completeSprint();
+            shouldCompleteRef.current = true;
           }
           return prev;
         }
@@ -308,6 +314,18 @@ export function useFocusSprint() {
       'Focus sprint finalizado.'
     );
   }, []);
+
+  // Handle sprint completion in useEffect to avoid race conditions
+  useEffect(() => {
+    if (shouldCompleteRef.current) {
+      shouldCompleteRef.current = false;
+      completeSprint();
+    }
+    if (shouldStopRef.current) {
+      shouldStopRef.current = false;
+      stopSprint();
+    }
+  }, [state.timeRemaining, state.isBreak, completeSprint, stopSprint]);
 
   const extendSprint = useCallback(async (additionalMinutes: number) => {
     if (!state.isActive || state.isBreak) return;

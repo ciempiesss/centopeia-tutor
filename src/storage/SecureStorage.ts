@@ -19,8 +19,22 @@ const API_KEY_PREFIX = 'centopeia_key_';
 
 // Simple obfuscation - NOT encryption, just prevents casual inspection
 // In production, use proper encryption or native secure storage
+// NOTE: Key is derived from device/user fingerprint for basic obfuscation
+function getObfuscationKey(): string {
+  // Derive key from user agent + screen size + timezone for basic device fingerprinting
+  // This makes the obfuscation key unique per device/session without hardcoding
+  const fingerprint = `${navigator.userAgent}:${screen.width}x${screen.height}:${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+  let hash = 0;
+  for (let i = 0; i < fingerprint.length; i++) {
+    const char = fingerprint.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return `centopeia_${Math.abs(hash).toString(36)}`;
+}
+
 function obfuscate(text: string): string {
-  const key = 'centopeia_v1'; // In production, derive from device ID
+  const key = getObfuscationKey();
   let result = '';
   for (let i = 0; i < text.length; i++) {
     const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
@@ -31,7 +45,7 @@ function obfuscate(text: string): string {
 
 function deobfuscate(obfuscated: string): string | null {
   try {
-    const key = 'centopeia_v1';
+    const key = getObfuscationKey();
     const text = atob(obfuscated);
     let result = '';
     for (let i = 0; i < text.length; i++) {

@@ -60,17 +60,40 @@ export class ContextManager {
     }
   }
 
+  // Better token estimation based on language patterns
+  private estimateTokens(text: string): number {
+    if (!text || text.length === 0) return 0;
+
+    // For English/Spanish: ~1.3 tokens per word is more accurate
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    const charCount = text.length;
+
+    let tokenEstimate = Math.ceil(wordCount * 1.3);
+
+    // Code blocks have higher token density
+    if (text.includes('```')) {
+      tokenEstimate = Math.ceil(tokenEstimate * 1.2);
+    }
+
+    // Very short text adjustment
+    if (charCount < 20) {
+      tokenEstimate = Math.max(tokenEstimate, Math.ceil(charCount / 2));
+    }
+
+    // Cap at reasonable maximum
+    const MAX_TOKENS = 100000;
+    return Math.min(tokenEstimate, MAX_TOKENS);
+  }
+
   // Build context window for LLM
   buildContextWindow(
     allMessages: TerminalMessage[],
     recentCount: number = 10
   ): ContextWindow {
-    // Get recent messages
     const recent = allMessages.slice(-recentCount);
-    
-    // Calculate approximate tokens (rough estimate: 4 chars = 1 token)
+
     const totalTokens = recent.reduce((acc, msg) => {
-      return acc + Math.ceil(msg.content.length / 4);
+      return acc + this.estimateTokens(msg.content);
     }, 0);
 
     return {
@@ -164,7 +187,8 @@ export class ContextManager {
   }
 
   // Summarize older messages to save tokens
-  async summarizeMessages(messages: TerminalMessage[]): Promise<string> {
+  // NOTE: This function is synchronous as it doesn't require async operations
+  summarizeMessages(messages: TerminalMessage[]): string {
     if (messages.length < 5) return '';
 
     const content = messages

@@ -91,13 +91,14 @@ export class CentopeiaDatabase extends Database {
     const keys = await this.keys();
     const sessionKeys = keys.filter(k => k.startsWith('session:'));
     
-    const sessions: StudySession[] = [];
-    for (const key of sessionKeys) {
-      const session = await this.get<StudySession>(key);
-      if (session) sessions.push(session);
-    }
+    // Parallel fetching for better performance (N+1 fix)
+    const sessions = await Promise.all(
+      sessionKeys.map(key => this.get<StudySession>(key))
+    );
     
-    return sessions.sort((a, b) => 
+    const validSessions = sessions.filter((s): s is StudySession => s !== null);
+    
+    return validSessions.sort((a, b) => 
       new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
     );
   }
@@ -115,13 +116,12 @@ export class CentopeiaDatabase extends Database {
     const keys = await this.keys();
     const knowledgeKeys = keys.filter(k => k.startsWith('knowledge:'));
     
-    const states: KnowledgeState[] = [];
-    for (const key of knowledgeKeys) {
-      const state = await this.get<KnowledgeState>(key);
-      if (state) states.push(state);
-    }
+    // Parallel fetching for better performance (N+1 fix)
+    const states = await Promise.all(
+      knowledgeKeys.map(key => this.get<KnowledgeState>(key))
+    );
     
-    return states;
+    return states.filter((s): s is KnowledgeState => s !== null);
   }
 
   // Sync Queue (for offline-first)
@@ -179,13 +179,12 @@ export class CentopeiaDatabase extends Database {
   async getAllModuleProgress(): Promise<ModuleProgress[]> {
     const moduleIds = await this.get<string[]>('modules:all', []) || [];
     
-    const progresses: ModuleProgress[] = [];
-    for (const id of moduleIds) {
-      const progress = await this.getModuleProgress(id);
-      if (progress) progresses.push(progress);
-    }
+    // Parallel fetching for better performance (N+1 fix)
+    const progresses = await Promise.all(
+      moduleIds.map(id => this.getModuleProgress(id))
+    );
     
-    return progresses;
+    return progresses.filter((p): p is ModuleProgress => p !== null);
   }
 
   async getPathProgress(pathId: string): Promise<ModuleProgress[]> {

@@ -39,6 +39,37 @@ interface SendMessageOptions {
   stream?: boolean;
 }
 
+// Rate limiter for API calls
+class RateLimiter {
+  private lastCallTime: number = 0;
+  private readonly minIntervalMs: number = 1000; // Min 1 second between calls
+  private consecutiveErrors: number = 0;
+  private backoffMs: number = 0;
+
+  async checkLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastCall = now - this.lastCallTime;
+    const waitTime = Math.max(this.minIntervalMs + this.backoffMs - timeSinceLastCall, 0);
+    
+    if (waitTime > 0) {
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.lastCallTime = Date.now();
+  }
+
+  recordError() {
+    this.consecutiveErrors++;
+    // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+    this.backoffMs = Math.min(Math.pow(2, this.consecutiveErrors) * 1000, 30000);
+  }
+
+  recordSuccess() {
+    this.consecutiveErrors = 0;
+    this.backoffMs = 0;
+  }
+}
+
 export class LLMClient {
   private apiKey: string;
   private model: string;
@@ -47,6 +78,7 @@ export class LLMClient {
   private baseUrl = 'https://api.groq.com/openai/v1';
   private abortController: AbortController | null = null;
   private readonly REQUEST_TIMEOUT = 60000; // 60 segundos
+  private rateLimiter = new RateLimiter();
 
   // Modelos disponibles en Groq
   static readonly MODELS = {
@@ -69,6 +101,9 @@ export class LLMClient {
    * Envía un mensaje al LLM con sistema de prompts adaptativo
    */
   async sendMessage(options: SendMessageOptions): Promise<string> {
+    // Apply rate limiting
+    await this.rateLimiter.checkLimit();
+
     const { messages, role, mode = 'tutoring', context, stream = false } = options;
 
     // Detectar si debemos cambiar de modo automáticamente
@@ -114,13 +149,23 @@ export class LLMClient {
       throw new Error('Use streamMessage() for streaming');
     }
 
-    return this.makeRequest(groqMessages);
+    try {
+      const result = await this.makeRequest(groqMessages);
+      this.rateLimiter.recordSuccess();
+      return result;
+    } catch (error) {
+      this.rateLimiter.recordError();
+      throw error;
+    }
   }
 
   /**
    * Streaming response para feedback inmediato
    */
   async *streamMessage(options: SendMessageOptions): AsyncGenerator<string, void, unknown> {
+    // Apply rate limiting
+    await this.rateLimiter.checkLimit();
+
     const { messages, role, mode = 'tutoring', context } = options;
 
     // Detectar modo
@@ -236,8 +281,20 @@ export class LLMClient {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || `HTTP ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const error = await response.json();
+          errorMessage = error.error?.message || error.message || errorMessage;
+        } catch (jsonError) {
+          // Si JSON falla, intentar leer como texto plano
+          try {
+            const textError = await response.text();
+            errorMessage = textError || errorMessage;
+          } catch {
+            // Si todo falla, usar el status HTTP
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data: GroqResponse = await response.json();

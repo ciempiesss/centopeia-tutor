@@ -2,9 +2,22 @@ import type { CommandHandler } from './index';
 import { Preferences } from '@capacitor/preferences';
 
 export const statsCommand: CommandHandler = async () => {
-  // Load stats from storage
-  const { value } = await Preferences.get({ key: 'focus_sprint_stats' });
-  const stats = value ? JSON.parse(value) : { completedToday: 0, totalMinutes: 0 };
+  // Load stats from storage with error handling
+  let stats = { completedToday: 0, totalMinutes: 0 };
+  try {
+    const { value } = await Preferences.get({ key: 'focus_sprint_stats' });
+    if (value) {
+      try {
+        stats = JSON.parse(value);
+      } catch (parseError) {
+        console.error('[Stats] Failed to parse stats, resetting:', parseError);
+        // Reset corrupted stats
+        await Preferences.set({ key: 'focus_sprint_stats', value: JSON.stringify(stats) });
+      }
+    }
+  } catch (storageError) {
+    console.error('[Stats] Failed to load from storage:', storageError);
+  }
 
   return `
 ╔══════════════════════════════════════════════════════════════╗

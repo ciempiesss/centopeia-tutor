@@ -18,7 +18,9 @@ export interface AudhdConfig {
   prefersBodyDoubling: boolean;
   rsdSensitivity: 'low' | 'medium' | 'high';
   hyperfocusMode: 'channel' | 'prevent' | 'ignore';
-  llmApiKey?: string;
+  // SECURITY NOTE: llmApiKey is deprecated in this interface.
+  // Use SecureStorage for API keys instead to prevent accidental exposure
+  llmApiKey?: never;
   sensoryPreferences: SensoryPreferences;
 }
 
