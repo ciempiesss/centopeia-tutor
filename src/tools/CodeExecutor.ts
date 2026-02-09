@@ -34,7 +34,7 @@ export class CodeExecutor {
 
     this.isLoading = true;
     this.loadPromise = loadPyodide({
-      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/',
+      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/',
     });
 
     try {

@@ -18,10 +18,12 @@ export interface InterviewQuestion {
   whatTheyLookFor: string[]; // Qué busca el entrevistador
   goodAnswerTips: string[]; // Tips para buena respuesta
   followUpQuestions?: string[]; // Preguntas de seguimiento posibles
+  modelAnswer?: string; // Respuesta modelo/ejemplo de respuesta clave
+  companies?: string[]; // Empresas donde se ha visto esta pregunta
 }
 
 // =============================================================================
-// PREGUNTAS TÉCNICAS
+// PREGUNTAS TÉCNICAS - FUNDAMENTOS DEL ROL QA (El "Por Qué")
 // =============================================================================
 
 export const TECHNICAL_QUESTIONS: InterviewQuestion[] = [
@@ -45,6 +47,115 @@ export const TECHNICAL_QUESTIONS: InterviewQuestion[] = [
     followUpQuestions: [
       '¿Qué haces si un dev marca tu bug como "Cannot Reproduce"?',
       '¿Cuándo cierras un bug sin verificar el fix?'
+    ]
+  },
+  {
+    id: 'qa-tech-verification-001',
+    category: 'technical',
+    difficulty: 'junior',
+    questionES: '¿Cuál es la diferencia entre Verificación y Validación?',
+    questionEN: 'What is the difference between Verification and Validation?',
+    context: 'Pregunta clásica ISTQB para verificar entendimiento de conceptos fundamentales',
+    whatTheyLookFor: [
+      'Entendimiento de los objetivos de cada proceso',
+      'Capacidad de ejemplificar la diferencia',
+      'Conocimiento de estándares de calidad'
+    ],
+    goodAnswerTips: [
+      'Verification: "Are we building the product RIGHT?" - revisa si seguimos las especificaciones',
+      'Validation: "Are we building the RIGHT product?" - revisa si cumple la necesidad del usuario',
+      'Analogía: Verification = seguir el plano correctamente | Validation = asegurar que la casa sea habitable',
+      'Ejemplo práctico: Verification = code review | Validation = UAT con usuario final'
+    ],
+    followUpQuestions: [
+      '¿En qué fase del SDLC se hace cada una?',
+      '¿Quién participa en cada proceso?'
+    ],
+    modelAnswer: 'La verificación revisa si estamos construyendo el producto correctamente (según especificaciones). La validación revisa si estamos construyendo el producto correcto (según la necesidad del usuario). Es la diferencia entre seguir el plano y asegurar que la casa sea habitable.',
+    companies: ['Softtek', 'Globant', 'IBM México']
+  },
+  {
+    id: 'qa-tech-exit-criteria-001',
+    category: 'technical',
+    difficulty: 'junior-plus',
+    questionES: '¿Cuándo decides dejar de probar? (Exit Criteria)',
+    questionEN: 'When do you decide to stop testing? (Exit Criteria)',
+    context: 'Evalúa entendimiento de gestión de riesgo y calidad',
+    whatTheyLookFor: [
+      'Consciencia de que nunca se "termina" de probar',
+      'Entendimiento de criterios de salida objetivos',
+      'Capacidad de balancear tiempo vs calidad'
+    ],
+    goodAnswerTips: [
+      '"Nunca se termina de probar, se detiene por riesgo o tiempo"',
+      'Criterios de salida definidos en Test Plan: bugs críticos cerrados, cobertura aceptable',
+      'Análisis de riesgo: qué áreas son críticas para el negocio',
+      'Comunicación con stakeholders sobre el nivel de calidad alcanzado',
+      'Documentar deuda técnica o riesgos asumidos'
+    ]
+  },
+  {
+    id: 'qa-tech-smoke-sanity-001',
+    category: 'technical',
+    difficulty: 'junior',
+    questionES: '¿Qué diferencia hay entre Smoke Testing y Sanity Testing?',
+    questionEN: 'What is the difference between Smoke Testing and Sanity Testing?',
+    context: 'Pregunta clásica que muchos confunden. Evalúa precisión técnica',
+    whatTheyLookFor: [
+      'Claridad en definiciones específicas',
+      'Entender alcance de cada uno',
+      'Saber cuándo aplicar cada uno'
+    ],
+    goodAnswerTips: [
+      'Smoke: Amplio y superficial - "¿La build enciende? ¿Puedo entrar?"',
+      'Sanity: Profundo y estrecho - "¿El bug específico que arreglaron ya funciona y no rompió lo de al lado?"',
+      'Smoke se hace en builds nuevas para verificar estabilidad general',
+      'Sanity se hace después de un fix específico para verificar ese cambio',
+      'Ambos son subconjuntos de Regression Testing'
+    ]
+  },
+  {
+    id: 'qa-tech-severity-priority-001',
+    category: 'technical',
+    difficulty: 'junior',
+    questionES: 'Diferencia entre Prioridad y Severidad.',
+    questionEN: 'Difference between Priority and Severity.',
+    context: 'Fundamental para reportar bugs correctamente',
+    whatTheyLookFor: [
+      'Entendimiento de impacto técnico vs urgencia de negocio',
+      'Capacidad de ejemplificar',
+      'Consciencia de que son independientes'
+    ],
+    goodAnswerTips: [
+      'Severidad = Impacto TÉCNICO (ej. el sistema crashea)',
+      'Prioridad = Urgencia de NEGOCIO (ej. el logo está mal)',
+      'Ejemplo: Crash en pantalla oculta = Alta Severidad / Baja Prioridad',
+      'Ejemplo: Error ortográfico en Home = Baja Severidad / Alta Prioridad',
+      'QA define Severidad basado en impacto técnico',
+      'PO/PM define Prioridad basado en impacto al negocio'
+    ]
+  },
+  {
+    id: 'qa-tech-production-bug-001',
+    category: 'technical',
+    difficulty: 'junior-plus',
+    questionES: '¿Qué haces si encuentras un bug en Producción?',
+    questionEN: 'What do you do if you find a bug in Production?',
+    context: 'Evalúa manejo de crisis y procedimientos',
+    whatTheyLookFor: [
+      'Calma bajo presión',
+      'Evaluación rápida de impacto',
+      'Escalamiento apropiado',
+      'Análisis root cause sin culpas'
+    ],
+    goodAnswerTips: [
+      '1. Mantengo la calma - no es el fin del mundo',
+      '2. Verifico el impacto: ¿cuántos usuarios afecta? ¿hay workaround?',
+      '3. Si es crítico: alerto inmediatamente (Hotfix / Rollback)',
+      '4. Si no es crítico: lo reporto para el siguiente sprint',
+      '5. Documentar el bug con toda la evidencia posible',
+      '6. Post-mortem: ¿Cómo se nos pasó? Root Cause Analysis',
+      '7. "Mejorar el proceso, no para culpar" - lessons learned'
     ]
   },
   {
@@ -183,7 +294,7 @@ export const TECHNICAL_QUESTIONS: InterviewQuestion[] = [
 ];
 
 // =============================================================================
-// PREGUNTAS COMPORTAMENTALES
+// PREGUNTAS COMPORTAMENTALES - HABILIDADES BLANDAS Y "LA VIBRA"
 // =============================================================================
 
 export const BEHAVIORAL_QUESTIONS: InterviewQuestion[] = [
@@ -191,19 +302,105 @@ export const BEHAVIORAL_QUESTIONS: InterviewQuestion[] = [
     id: 'qa-beh-001',
     category: 'behavioral',
     difficulty: 'junior',
-    questionES: '¿Por qué quieres ser QA Tester y no desarrollador?',
-    questionEN: 'Why do you want to be a QA Tester and not a developer?',
-    context: 'Pregunta clásica para entender motivación',
+    questionES: '¿Por qué QA? ¿Por qué no desarrollador?',
+    questionEN: 'Why QA? Why not developer?',
+    context: 'Pregunta clásica para entender motivación genuina del rol',
     whatTheyLookFor: [
-      'Motivación genuina por QA',
-      'Entendimiento del rol',
-      'No ver QA como "puerta de entrada" a dev'
+      'Mente naturalmente inquisitiva',
+      'Satisfacción por proteger al usuario final',
+      'Entendimiento del rol como guardian de calidad',
+      'NO ver QA como "puerta de entrada" a dev'
     ],
     goodAnswerTips: [
-      'Mencionar gusto por encontrar problemas antes que usuarios',
-      'Hablar de satisfacción de mejorar calidad del producto',
-      'Mencionar que te gusta pensar como "usuario final"',
-      'NO decir "para después ser dev"'
+      'Mencionar curiosidad por entender cómo funcionan las cosas "por dentro"',
+      'Hablar de satisfacción de encontrar problemas antes que usuarios',
+      'Enfatizar que te gusta pensar como "usuario final" y romper cosas constructivamente',
+      'Conectar con el impacto: "proteger la experiencia del usuario final"',
+      'NO decir "para después ser dev" o "no me dieron chance de dev"'
+    ]
+  },
+  {
+    id: 'qa-beh-why-qa-001',
+    category: 'behavioral',
+    difficulty: 'junior',
+    questionES: '¿Por qué quieres ser QA Tester?',
+    questionEN: 'Why do you want to be a QA Tester?',
+    context: 'Versión más abierta para entender motivación personal',
+    whatTheyLookFor: [
+      'Pasión genuina por la calidad',
+      'Mentalidad analítica y curiosa',
+      'Consciencia del valor del rol'
+    ],
+    goodAnswerTips: [
+      '"Tengo una mente naturalmente inquisitiva"',
+      '"Me gusta entender cómo funcionan las cosas por dentro"',
+      '"Siento satisfacción al proteger la experiencia del usuario final"',
+      'Compartir una anécdota personal de cuando encontraste un bug importante',
+      'Mencionar que disfrutas el detective work de encontrar root causes'
+    ]
+  },
+  {
+    id: 'qa-beh-pressure-001',
+    category: 'behavioral',
+    difficulty: 'junior',
+    questionES: '¿Cómo manejas la presión cuando se acerca el release?',
+    questionEN: 'How do you handle pressure when the release is near?',
+    context: 'Evalúa manejo de estrés y profesionalismo bajo presión',
+    whatTheyLookFor: [
+      'Comunicación transparente sobre riesgos',
+      'Capacidad de priorizar lo crítico',
+      'No prometer imposibles',
+      'Calidad sobre velocidad'
+    ],
+    goodAnswerTips: [
+      '"Comunicación transparente. No prometo imposibles"',
+      'Si veo riesgos, levanto la mano temprano (no al último día)',
+      'Priorizar basado en impacto al usuario y negocio',
+      'Enfocarme en calidad sobre cantidad de tests',
+      'Documentar decisiones y riesgos asumidos',
+      'Mantener la calma y ser el "puerto seguro" del equipo'
+    ]
+  },
+  {
+    id: 'qa-beh-updated-001',
+    category: 'behavioral',
+    difficulty: 'junior',
+    questionES: '¿Cómo te mantienes actualizado en QA?',
+    questionEN: 'How do you stay updated in QA?',
+    context: 'Evalúa proactividad y compromiso con el aprendizaje continuo',
+    whatTheyLookFor: [
+      'Curiosidad genuina por aprender',
+      'Recursos de la comunidad',
+      'Práctica fuera del trabajo',
+      'Consciencia de que el software cambia'
+    ],
+    goodAnswerTips: [
+      'Leo blogs: Ministry of Testing, Test Automation University',
+      'Sigo comunidades: r/QualityAssurance, Slack/Discord de testing',
+      'Practico con herramientas nuevas (Cypress, Playwright) en proyectos personales',
+      'YouTube channels: Automation Step by Step, TestGuild',
+      '"El software cambia, yo también" - mostrar mentalidad de crecimiento',
+      'NO decir "solo lo que me enseñan en el trabajo"'
+    ]
+  },
+  {
+    id: 'qa-beh-boredom-001',
+    category: 'behavioral',
+    difficulty: 'junior',
+    questionES: '¿Qué harías si te aburres de probar lo mismo siempre (regresión)?',
+    questionEN: 'What would you do if you get bored testing the same thing (regression)?',
+    context: 'Evalúa actitud proactiva ante tareas repetitivas',
+    whatTheyLookFor: [
+      'Mentalidad de mejora continua',
+      'Iniciativa para automatizar',
+      'Creatividad para innovar procesos'
+    ],
+    goodAnswerTips: [
+      '"Busco automatizarlo o proponer que se automatice"',
+      'Intento romperlo de formas nuevas (Chaos Engineering mental)',
+      'La repetición es la señal para innovar el proceso',
+      'Documentar y proponer mejoras al proceso de regresión',
+      'Verlo como oportunidad de encontrar edge cases que antes no vimos'
     ]
   },
   {
@@ -307,7 +504,7 @@ export const BEHAVIORAL_QUESTIONS: InterviewQuestion[] = [
 ];
 
 // =============================================================================
-// PREGUNTAS DE ESCENARIO
+// PREGUNTAS DE ESCENARIO - ESCENARIOS PRÁCTICOS (Realidad Simulada)
 // =============================================================================
 
 export const SCENARIO_QUESTIONS: InterviewQuestion[] = [
@@ -330,6 +527,128 @@ export const SCENARIO_QUESTIONS: InterviewQuestion[] = [
       '4. Identificar riesgos y edge cases críticos',
       '5. Comunicar qué se probó y qué no',
       '6. NO prometer cobertura completa en 2 horas'
+    ]
+  },
+  {
+    id: 'qa-sce-works-on-my-machine-001',
+    category: 'scenario',
+    difficulty: 'junior',
+    questionES: 'Si encuentras un bug y el desarrollador dice "En mi máquina funciona", ¿qué haces?',
+    questionEN: 'You find a bug but the developer says "Works on my machine". What do you do?',
+    context: 'Situación MUY común. Evalúa diplomacia y resolución de problemas',
+    whatTheyLookFor: [
+      'NO entrar en debate de egos',
+      'Método científico para aislar variables',
+      'Colaboración con el dev, no confrontación',
+      'Documentación clara'
+    ],
+    goodAnswerTips: [
+      '"No entro en debate de egos. Mi objetivo es aislar la variable que nos diferencia"',
+      'Verifico el entorno: versión de código, navegador, datos de prueba',
+      'Limpio caché y cookies',
+      'Si persiste, lo reproduzco frente a él o grabo un video con logs',
+      'Comparar configuraciones lado a lado',
+      'Ofrecer pair debugging - "sentémonos juntos a verlo"',
+      'El objetivo es resolver el problema, no tener la razón'
+    ],
+    followUpQuestions: [
+      '¿Y si sigue sin creerte?',
+      '¿Cuándo involucrarías a un QA Lead?'
+    ]
+  },
+  {
+    id: 'qa-sce-login-edge-001',
+    category: 'scenario',
+    difficulty: 'junior',
+    questionES: 'Tienes un formulario de login. Dame casos de prueba NO obvios.',
+    questionEN: 'You have a login form. Give me NON-obvious test cases.',
+    context: 'Evalúa creatividad y pensamiento "out of the box"',
+    whatTheyLookFor: [
+      'Pensamiento más allá del happy path',
+      'Consciencia de seguridad',
+      'Consideración de UX edge cases',
+      'Conocimiento de caracteres especiales'
+    ],
+    goodAnswerTips: [
+      'Inyección SQL: "\'; DROP TABLE users; --"',
+      'Copiar/pegar passwords con espacios al final (trim issues)',
+      'Caracteres no latinos: emojis, ñ, chino, árabes',
+      'Botón "atrás" del navegador después de loguearse (caché)',
+      'Timeout de sesión: ¿qué pasa con requests pendientes?',
+      'Intentos simultáneos en dos pestañas (race conditions)',
+      'Password con null bytes o caracteres de control',
+      'SQL wildcard characters: %, _',
+      'Longitud extrema: 1 caracter vs 1000 caracteres',
+      'Copy-paste desde Word (caracteres especiales invisibles)'
+    ]
+  },
+  {
+    id: 'qa-sce-prioritize-001',
+    category: 'scenario',
+    difficulty: 'junior-plus',
+    questionES: '¿Cómo priorizas tus pruebas si tienes 2 días para algo que requiere 5?',
+    questionEN: 'How do you prioritize testing when you have 2 days for something that needs 5?',
+    context: 'Evalúa gestión de riesgo y comunicación',
+    whatTheyLookFor: [
+      'Uso de Matriz de Riesgo',
+      'Priorización basada en impacto al negocio',
+      'Comunicación proactiva con stakeholders',
+      'Documentación de deuda técnica'
+    ],
+    goodAnswerTips: [
+      'Matriz de Riesgo: Impacto × Probabilidad',
+      'Pruebo primero los flujos críticos (lo que bloquea al usuario o genera dinero)',
+      'Identificar happy paths que deben funcionar sí o sí',
+      'Lo cosmético o flujos raros se documentan como riesgo asumido',
+      'COMUNICAR ESTO AL PM antes de empezar - no al final',
+      'Proponer plan B: ¿podemos hacer release parcial?',
+      'Documentar qué NO se probó y los riesgos asociados'
+    ]
+  },
+  {
+    id: 'qa-sce-interesting-bug-001',
+    category: 'scenario',
+    difficulty: 'junior',
+    questionES: 'Describe un bug interesante que hayas encontrado.',
+    questionEN: 'Describe an interesting bug you\'ve found.',
+    context: 'Evalúa experiencia práctica y capacidad de storytelling técnico',
+    whatTheyLookFor: [
+      'Experiencia real (o bien simulada)',
+      'Pensamiento analítico',
+      'Curiosidad técnica',
+      'Capacidad de comunicar complejidad'
+    ],
+    goodAnswerTips: [
+      'Preparar una historia real con estructura STAR',
+      'Contexto: ¿qué estabas probando?',
+      'Descubrimiento: ¿cómo lo encontraste?',
+      'Impacto: ¿qué consecuencias tenía?',
+      'Resolución: ¿cómo se arregló?',
+      'Ejemplo: "Al cambiar la zona horaria del dispositivo, los pedidos se duplicaban porque el backend no normalizaba a UTC"',
+      'Mostrar curiosidad técnica y detective work'
+    ]
+  },
+  {
+    id: 'qa-sce-ambiguous-req-001',
+    category: 'scenario',
+    difficulty: 'junior',
+    questionES: 'El requerimiento es ambiguo o no existe. ¿Cómo pruebas?',
+    questionEN: 'The requirement is ambiguous or doesn\'t exist. How do you test?',
+    context: 'Evalúa autonomía y testing exploratorio',
+    whatTheyLookFor: [
+      'Iniciativa para aclarar requerimientos',
+      'Capacidad de testing exploratorio',
+      'Uso de estándares de la industria',
+      'Documentación de supuestos'
+    ],
+    goodAnswerTips: [
+      'Hago Testing Exploratorio basado en mi experiencia',
+      'Uso mi intuición y comparo con productos similares o estándares de la industria',
+      'Documento mis supuestos MIENTRAS pruebo',
+      'Valido mis supuestos con el PO/Dev lo antes posible',
+      'Tomo screenshots de comportamiento actual como "documentación viva"',
+      'En paralelo, levanto el issue de requerimiento faltante',
+      'Comunico: "Asumí X comportamiento basado en Y, ¿es correcto?"'
     ]
   },
   {

@@ -157,9 +157,9 @@ export function buildCompleteSystemPrompt(options: PromptBuildOptions): string {
   // 3. Context awareness
   if (Object.keys(context).length > 0) {
     let contextStr = CONTEXT_AWARENESS;
-    for (const [key, value] of Object.entries(context)) {
-      contextStr = contextStr.replace(`{${key}}`, String(value ?? 'N/A'));
-    }
+      for (const [key, value] of Object.entries(context)) {
+        contextStr = contextStr.replace(`{${key}}`, String(value ?? 'N/A'));
+      }
     prompt += contextStr + '\n\n';
   }
   

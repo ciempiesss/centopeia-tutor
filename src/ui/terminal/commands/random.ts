@@ -1,5 +1,4 @@
 import type { CommandHandler } from './index';
-import { LEARNING_PATHS } from '../../../data/learningPaths';
 
 // Topics for random learning
 const RANDOM_TOPICS = [
@@ -16,52 +15,28 @@ const RANDOM_TOPICS = [
     path: 'developer',
   },
   {
+    topic: 'JavaScript Functions',
+    description: 'Funciones, parámetros y retorno',
+    command: '/learn javascript',
+    path: 'developer',
+  },
+  {
     topic: 'HTTP Status Codes',
     description: 'Qué significan 200, 404, 500 y los demás',
     command: '/quiz general',
     path: 'qa',
   },
   {
-    topic: 'Git Básico',
-    description: 'Commit, push, pull y branches',
-    command: '/learn git',
-    path: 'developer',
-  },
-  {
-    topic: 'Testing Pyramid',
-    description: 'Unit, Integration y E2E tests',
-    command: '/learn testing',
-    path: 'qa',
-  },
-  {
-    topic: 'CSS Flexbox',
-    description: 'Alinear elementos como un pro',
-    command: '/practice css',
-    path: 'developer',
-  },
-  {
-    topic: 'RegEx Básico',
-    description: 'Buscar patrones en texto',
-    command: '/practice regex',
-    path: 'developer',
-  },
-  {
-    topic: 'API REST',
-    description: 'Cómo funcionan las APIs modernas',
-    command: '/learn api',
-    path: 'qa',
-  },
-  {
-    topic: 'Data Types',
+    topic: 'Data Types (Python)',
     description: 'Strings, numbers, booleans y más',
     command: '/quiz python',
     path: 'developer',
   },
   {
-    topic: 'Agile vs Waterfall',
-    description: 'Metodologías de desarrollo de software',
-    command: '/quiz general',
-    path: 'qa',
+    topic: 'Ejercicio de Python',
+    description: 'Practica con un reto rápido',
+    command: '/practice python',
+    path: 'developer',
   },
 ];
 
@@ -70,22 +45,14 @@ export const randomCommand: CommandHandler = async (args, context) => {
   const randomIndex = Math.floor(Math.random() * RANDOM_TOPICS.length);
   const topic = RANDOM_TOPICS[randomIndex];
 
-  return `
-╔══════════════════════════════════════════════════════════════╗
-║                    🎲 TEMA AL AZAR                           ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-║  📚 ${topic.topic.padEnd(52)} ║
-║                                                              ║
-║  ${topic.description.padEnd(60)} ║
-║                                                              ║
-║  Path sugerido: ${topic.path.toUpperCase().padEnd(46)} ║
-║                                                              ║
-╠══════════════════════════════════════════════════════════════╣
-║  Para aprender esto, escribe:                                ║
-║  [green]${topic.command.padEnd(56)}[/green]  ║
-║                                                              ║
-║  [dim]O escribe /random para otro tema aleatorio[/dim]          ║
-╚══════════════════════════════════════════════════════════════╝
-`;
+  return `[green]🎲 Tema al azar:[/green] ${topic.topic}
+
+${topic.description}
+
+Path: ${topic.path.toUpperCase()}
+
+Para aprender: [green]${topic.command}[/green]
+[dim]O escribe /random para otro tema[/dim]`;
 };
+
+

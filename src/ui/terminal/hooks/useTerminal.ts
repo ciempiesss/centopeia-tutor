@@ -1,19 +1,24 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { TerminalMessage, StudySession } from '../../../types';
 import { generateId } from '../../../utils/idGenerator';
 import { LLMClient } from '../../../core/agent/LLMClient';
 import { ContextManager } from '../../../core/agent/ContextManager';
 import { CentopeiaDatabase } from '../../../storage/Database';
-import { secureStorage } from '../../../storage/SecureStorage';
 import { useFocusSprint } from '../../../core/audhd/FocusSprint';
 import { commandRegistry } from '../commands';
 import { codeExecutor } from '../../../tools/CodeExecutor';
 import { quizGenerator } from '../../../tools/QuizGenerator';
 import { getPathById, type LearningPath } from '../../../data/learningPaths';
+import { secureStorage } from '../../../storage/SecureStorage';
+import { getHint, hasActiveExercise, isHintRequest } from '../commands/practice';
+import { onProfileUpdated } from '../terminalEvents';
 
 // Initialize services
 const db = CentopeiaDatabase.getInstance();
 const contextManager = new ContextManager();
+
+const ENV_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+console.log('[ENV] API Key disponible:', ENV_API_KEY ? '✅ SÍ' : '❌ NO');
 
 export interface UseTerminalReturn {
   messages: TerminalMessage[];
@@ -22,6 +27,7 @@ export interface UseTerminalReturn {
   currentSession: StudySession | null;
   isInitialized: boolean;
   completedModules: number;
+  selectedPath: LearningPath | null;
   isFocusActive: boolean;
   timeRemaining: number;
   focusStats: { completedToday: number; totalMinutes: number };
@@ -54,19 +60,10 @@ Escribe /help para ver comandos disponibles.
 [dim]Práctica:[/dim] Escribe /practice python para ejercicios interactivos.
 `;
 
-// Sanitize user input to prevent XSS and injection attacks
+// Sanitize user input (minimal). Rendering already escapes HTML in OutputBuffer.
 const sanitizeInput = (input: string): string => {
   // Remove null bytes
   let sanitized = input.replace(/\x00/g, '');
-
-  // Basic XSS prevention - escape HTML entities
-  sanitized = sanitized
-    .replace(/&/g, '&amp;')
-    .replace(/\u003c/g, '&lt;')
-    .replace(/\u003e/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
 
   // Limit input length (prevent DoS)
   const MAX_INPUT_LENGTH = 10000;
@@ -105,16 +102,22 @@ const validateInput = (input: string): { valid: boolean; error?: string } => {
 };
 
 export function useTerminal(): UseTerminalReturn {
-  // State management
-  const [messages, setMessages] = useState<TerminalMessage[]>(() => [
-    {
-      id: generateId(),
-      role: 'system',
-      content: WelcomeMessage(),
-      timestamp: new Date().toISOString(),
-      type: 'success',
-    },
-  ]);
+  // State management - start with welcome message
+  const [messages, setMessages] = useState<TerminalMessage[]>(() => {
+    // Check if we're in a new session or returning
+    const hasExistingSession = sessionStorage.getItem('centopeia_session_active');
+    if (!hasExistingSession) {
+      sessionStorage.setItem('centopeia_session_active', 'true');
+      return [{
+        id: generateId(),
+        role: 'system',
+        content: WelcomeMessage(),
+        timestamp: new Date().toISOString(),
+        type: 'success',
+      }];
+    }
+    return [];
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [llmClient, setLlmClient] = useState<LLMClient | null>(null);
   const [currentSession, setCurrentSession] = useState<StudySession | null>(null);
@@ -163,21 +166,28 @@ export function useTerminal(): UseTerminalReturn {
           contextManager.setSession(session);
 
           // Load user's selected path from profile
-          const profile = await db.getUserProfile();
+          const profile = await db.getOrCreateUserProfile();
           if (profile?.roleFocus && profile.roleFocus !== 'exploring') {
-            const path = getPathById(profile.roleFocus);
+            const roleToPath: Record<string, 'qa' | 'developer' | 'data-analyst'> = {
+              qa_tester: 'qa',
+              developer: 'developer',
+              analyst: 'data-analyst',
+            };
+            const path = getPathById(roleToPath[profile.roleFocus]);
             if (path) {
               setSelectedPath(path);
             }
           }
 
-          // Check for API key in secure storage
-          const apiKey = await secureStorage.getApiKey();
+          // ACTIVAR LLM CON ENV API KEY O STORAGE
+          const storedKey = await secureStorage.getApiKey();
+          const apiKey = ENV_API_KEY || storedKey || '';
           if (apiKey) {
-            setLlmClient(new LLMClient({ apiKey }));
-            console.log('[LLM] API key cargada automáticamente, Kimi K2 listo');
+            const client = new LLMClient({ apiKey });
+            setLlmClient(client);
+            console.log('[LLM] ✅ API key cargada (env o storage)');
           } else {
-            console.log('[LLM] Sin API key, modo demo activo. Usa /config apikey TU_KEY');
+            console.log('[LLM] ⚠️ Sin API key configurada');
           }
 
           // Load completed modules count
@@ -204,15 +214,37 @@ export function useTerminal(): UseTerminalReturn {
     };
   }, []);
 
-  // Save message to database
-  const saveMessage = useCallback(async (message: TerminalMessage) => {
+  // Sync selected path when profile changes from terminal commands
+  useEffect(() => {
+    const unsubscribe = onProfileUpdated(async (event) => {
+      try {
+        const profile = await db.getOrCreateUserProfile();
+        const roleToPath: Record<string, 'qa' | 'developer' | 'data-analyst'> = {
+          qa_tester: 'qa',
+          developer: 'developer',
+          analyst: 'data-analyst',
+        };
+        const pathId = event.pathId || roleToPath[profile.roleFocus];
+        const path = pathId ? getPathById(pathId) : undefined;
+        if (path) {
+          setSelectedPath(path);
+        }
+      } catch (error) {
+        console.error('[Terminal] Error syncing profile:', error);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Save message to database - NO useCallback to avoid stale closures
+  const saveMessage = async (message: TerminalMessage) => {
     if (currentSession) {
       await db.addConversation(currentSession.id, message);
     }
-  }, [currentSession]);
+  };
 
   // Add assistant message to state and save to DB
-  const addAssistantMessage = useCallback((
+  const addAssistantMessage = (
     content: string,
     type?: 'text' | 'code' | 'error' | 'success' | 'warning'
   ) => {
@@ -225,15 +257,15 @@ export function useTerminal(): UseTerminalReturn {
     };
     setMessages((prev) => [...prev, assistantMsg]);
     saveMessage(assistantMsg);
-  }, [saveMessage]);
+  };
 
   // Check if input is a code block
-  const isCodeBlock = useCallback((input: string): boolean => {
+  const isCodeBlock = (input: string): boolean => {
     return input.trim().startsWith('```') && input.trim().endsWith('```');
-  }, []);
+  };
 
   // Extract code from markdown block
-  const extractCode = useCallback((input: string): { language: string; code: string } => {
+  const extractCode = (input: string): { language: string; code: string } => {
     const trimmed = input.trim();
     const lines = trimmed.split('\n');
 
@@ -244,10 +276,10 @@ export function useTerminal(): UseTerminalReturn {
     const code = codeLines.join('\n');
 
     return { language, code };
-  }, []);
+  };
 
   // Execute code block
-  const handleCodeExecution = useCallback(async (input: string): Promise<string> => {
+  const handleCodeExecution = async (input: string): Promise<string> => {
     const { language, code } = extractCode(input);
 
     if (language === 'python' || language === 'py') {
@@ -271,10 +303,10 @@ export function useTerminal(): UseTerminalReturn {
     }
 
     return `[yellow]Lenguaje "${language}" no soportado aún. Usa \`\`\`python\`\`\`.`;
-  }, [extractCode]);
+  };
 
   // Extract concept from user input
-  const extractConcept = useCallback((input: string): string | null => {
+  const extractConcept = (input: string): string | null => {
     const conceptPatterns = [
       /(?:qué es|qué son|explica|dime sobre)\s+(\w+)/i,
       /(?:cómo funciona|cómo usar|cómo hacer)\s+(\w+)/i,
@@ -286,13 +318,30 @@ export function useTerminal(): UseTerminalReturn {
     }
 
     return null;
-  }, []);
+  };
 
   // Process input with LLM
-  const processWithLLM = useCallback(async (input: string) => {
-    if (!llmClient) {
-      // Use demo mode without LLM
-      const demoResponses: Record<string, string> = {
+  const processWithLLM = async (input: string, baseMessages: TerminalMessage[]) => {
+    // USAR API KEY DEL ENV SIEMPRE
+    let client = llmClient;
+    
+    if (!client) {
+      const storedKey = await secureStorage.getApiKey();
+      const apiKey = ENV_API_KEY || storedKey || '';
+      if (apiKey) {
+        client = new LLMClient({ apiKey });
+        setLlmClient(client);
+        console.log('[LLM] ✅ Usando API key (env o storage)');
+      }
+    }
+    
+    if (client && !llmClient) {
+      setLlmClient(client);
+    }
+
+    if (!client) {
+      // Quick responses for common questions without LLM
+      const quickResponses: Record<string, string> = {
         hola: '¡Hola! Soy Centopeia, tu tutor técnico. ¿Qué te gustaría aprender hoy?\n\nEscribe /role para elegir tu path (QA, Developer, o Data Analyst).',
         help: 'Escribe /help para ver todos los comandos disponibles.',
         sql: 'SQL es un lenguaje para bases de datos. ¿Quieres empezar con SELECT básico?\n\nEscribe /learn sql para comenzar el módulo.',
@@ -301,10 +350,10 @@ export function useTerminal(): UseTerminalReturn {
       };
 
       const lowerInput = input.toLowerCase();
-      let response = demoResponses[lowerInput];
+      let response = quickResponses[lowerInput];
 
       if (!response) {
-        response = `Entendido: "${input}"\n\n[Modo Demo] Para respuestas inteligentes con IA, configura tu API key de Groq:\n/config apikey TU_API_KEY\n\nObtén una gratis en: https://console.groq.com`;
+        response = `[yellow]Modo local activo.[/yellow]\n\nPara respuestas con IA, agrega tu API key al archivo .env.local:\nVITE_GROQ_API_KEY=tu_key_aqui\n\nObtén una gratis en: https://console.groq.com`;
       }
 
       addAssistantMessage(response);
@@ -312,27 +361,55 @@ export function useTerminal(): UseTerminalReturn {
     }
 
     try {
+      console.log('[LLM] Enviando mensaje a Groq...');
+      // Agregar indicador temporal
+      const tempId = generateId();
+      setMessages(prev => [...prev, {
+        id: tempId,
+        role: 'assistant',
+        content: '[dim]⏱️ Pensando...[/dim]',
+        timestamp: new Date().toISOString(),
+        type: 'text',
+      }]);
+      
       // Get user profile for role context
-      const profile = await db.getUserProfile();
+      const profile = await db.getOrCreateUserProfile();
       const userRole = profile?.roleFocus || 'exploring';
 
       // Build context
-      const contextWindow = contextManager.buildContextWindow(messages);
+      const contextWindow = contextManager.buildContextWindow(baseMessages);
       const enhancedMessages = contextManager.enhanceWithContext(contextWindow.messages, input);
 
+      console.log('[LLM] Mensajes enviados:', enhancedMessages.length);
+      
       // Get response from LLM with dynamic prompting
-      const response = await llmClient.sendMessage({
+      const startTime = Date.now();
+      const response = await client.sendMessage({
         messages: enhancedMessages,
         role: userRole,
         context: {
           sessionId: currentSession?.id,
           userRole,
-          messageCount: messages.length,
+          messageCount: baseMessages.length,
           currentTopic: currentSession?.lastTopic,
         },
       });
+      const elapsed = Date.now() - startTime;
+      
+      console.log('[LLM] Respuesta recibida en', elapsed, 'ms');
+      console.log('[LLM] Respuesta:', response.substring(0, 100) + '...');
 
-      addAssistantMessage(response);
+      // Remove typing indicator and add real response
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.content !== '[dim]⏱️ Pensando...[/dim]');
+        return [...filtered, {
+          id: generateId(),
+          role: 'assistant',
+          content: response + `\n\n[dim]⏱️ ${elapsed}ms[/dim]`,
+          timestamp: new Date().toISOString(),
+          type: 'text',
+        }];
+      });
 
       // Update session with concept if detected
       if (currentSession) {
@@ -348,12 +425,23 @@ export function useTerminal(): UseTerminalReturn {
         'error'
       );
     }
-  }, [addAssistantMessage, currentSession, extractConcept, llmClient, messages]);
+  };
 
   // Main command handler
-  const handleCommand = useCallback(async (input: string) => {
+  const handleCommand = async (input: string) => {
     const trimmed = input.trim();
     if (!trimmed) return;
+
+    // ACTIVAR LLM CON ENV API KEY O STORAGE SI NO ESTÁ ACTIVO
+    if (!llmClient) {
+      const storedKey = await secureStorage.getApiKey();
+      const apiKey = ENV_API_KEY || storedKey || '';
+      if (apiKey) {
+        const client = new LLMClient({ apiKey });
+        setLlmClient(client);
+        console.log('[LLM] ✅ API key activada (env o storage)');
+      }
+    }
 
     // Validate input
     const validation = validateInput(trimmed);
@@ -384,16 +472,8 @@ export function useTerminal(): UseTerminalReturn {
     }, 10000);
 
     try {
-      // Check if it's a code block
-      if (isCodeBlock(trimmed)) {
-        const response = await handleCodeExecution(trimmed);
-        addAssistantMessage(response);
-        setIsTyping(false);
-        return;
-      }
-
-      // Parse command using sanitized input for processing
-      const parts = sanitizedInput.split(' ');
+      // Parse command using raw input (avoid breaking slashes)
+      const parts = trimmed.split(' ');
       const command = parts[0].toLowerCase();
       const args = parts.slice(1);
 
@@ -462,6 +542,30 @@ export function useTerminal(): UseTerminalReturn {
           );
         }
       } else {
+        // If in active practice, route code blocks to /practice
+        if (currentSession?.id && hasActiveExercise(currentSession.id) && isCodeBlock(trimmed)) {
+          const response = await commandRegistry['/practice']([trimmed], { sessionId: currentSession.id });
+          addAssistantMessage(response);
+          setIsTyping(false);
+          return;
+        }
+
+        // Hint handling during practice
+        if (currentSession?.id && hasActiveExercise(currentSession.id) && isHintRequest(trimmed)) {
+          const hint = await getHint(currentSession.id);
+          addAssistantMessage(hint);
+          setIsTyping(false);
+          return;
+        }
+
+        // Execute standalone code blocks (no active practice)
+        if (isCodeBlock(trimmed)) {
+          const response = await handleCodeExecution(trimmed);
+          addAssistantMessage(response);
+          setIsTyping(false);
+          return;
+        }
+
         // Check if there's an active quiz
         if (currentSession?.id && quizGenerator.getCurrentQuestion(currentSession.id)) {
           // Treat as quiz answer
@@ -469,7 +573,8 @@ export function useTerminal(): UseTerminalReturn {
           addAssistantMessage(response);
         } else {
           // Process with LLM using sanitized input
-          await processWithLLM(sanitizedInput);
+          const nextMessages = [...messages, userMsg];
+          await processWithLLM(sanitizedInput, nextMessages);
         }
       }
     } catch (error) {
@@ -486,16 +591,7 @@ export function useTerminal(): UseTerminalReturn {
       }
       setIsTyping(false);
     }
-  }, [
-    addAssistantMessage,
-    currentSession?.id,
-    handleCodeExecution,
-    isCodeBlock,
-    processWithLLM,
-    saveMessage,
-    startSprint,
-    stopSprint,
-  ]);
+  };
 
   // Update context manager when selectedPath changes
   useEffect(() => {
@@ -535,6 +631,7 @@ export function useTerminal(): UseTerminalReturn {
     currentSession,
     isInitialized,
     completedModules,
+    selectedPath,
     isFocusActive,
     timeRemaining,
     focusStats,

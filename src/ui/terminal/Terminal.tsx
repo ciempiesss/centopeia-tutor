@@ -1,11 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { StatusBar } from './StatusBar';
 import { TerminalHome, InterviewMode } from './TerminalHome';
 import { TerminalInput } from './components/TerminalInput';
 import { TerminalOutput } from './components/TerminalOutput';
-import { WELCOME_MESSAGE } from './components/WelcomeMessage';
 import { useTerminal } from './hooks/useTerminal';
-import { generateId } from '../../utils/idGenerator';
+import { onTerminalCommand } from './terminalEvents';
 
 export function Terminal() {
   const terminal = useTerminal();
@@ -19,14 +18,7 @@ export function Terminal() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [terminal.messages]);
 
-  // Initialize terminal - add welcome message on mount
-  useEffect(() => {
-    if (!terminal.isInitialized && terminal.messages.length === 0) {
-      terminal.addAssistantMessage(WELCOME_MESSAGE, 'success');
-    }
-  }, [terminal.isInitialized, terminal.messages.length, terminal.addAssistantMessage]);
-
-  const handleCommand = async (input: string) => {
+  const handleCommand = useCallback(async (input: string) => {
     const trimmed = input.trim();
     if (!trimmed) return;
 
@@ -43,13 +35,21 @@ export function Terminal() {
       return;
     }
 
-    // Hide home when any other command is used
+    // Hide home when any command is used
     if (showHome) {
       setShowHome(false);
     }
 
     await terminal.handleCommand(input);
-  };
+  }, [showHome, terminal]);
+
+  // Listen for external commands (e.g., UI buttons)
+  useEffect(() => {
+    const unsubscribe = onTerminalCommand((command) => {
+      handleCommand(command);
+    });
+    return () => unsubscribe();
+  }, [handleCommand]);
 
   const handleHomeCommand = (cmd: string) => {
     if (cmd === '/interview') {
@@ -103,14 +103,15 @@ export function Terminal() {
           <InterviewMode onExit={() => setInterviewMode(false)} />
         ) : showHome ? (
           <div className="flex-1 overflow-y-auto p-4">
-            <TerminalHome 
-              onCommand={handleHomeCommand}
-              onStartInterview={() => setInterviewMode(true)}
-              hasApiKey={!!terminal.llmClient}
-              completedModules={terminal.completedModules}
-              showGettingStarted={showGettingStarted}
-              onDismissGettingStarted={() => setShowGettingStarted(false)}
-            />
+          <TerminalHome 
+            onCommand={handleHomeCommand}
+            onStartInterview={() => setInterviewMode(true)}
+            hasApiKey={!!terminal.llmClient}
+            selectedPath={terminal.selectedPath}
+            completedModules={terminal.completedModules}
+            showGettingStarted={showGettingStarted}
+            onDismissGettingStarted={() => setShowGettingStarted(false)}
+          />
           </div>
         ) : (
           <TerminalOutput 

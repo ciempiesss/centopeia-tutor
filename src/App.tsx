@@ -9,12 +9,12 @@ import { RightPanel } from './ui/components/RightPanel';
 // Lazy loaded components
 const PathSelector = lazy(() => import('./ui/components/PathSelector').then(m => ({ default: m.PathSelector })));
 const LearningPathView = lazy(() => import('./ui/components/LearningPathView').then(m => ({ default: m.LearningPathView })));
-import { LEARNING_PATHS, getPathById, getNextModule } from './data/learningPaths';
+import { LEARNING_PATHS, getPathById, getNextModule, findModuleById } from './data/learningPaths';
 import type { LearningPath, MicroModule } from './data/learningPaths';
 import type { UserProfile } from './types';
-import { usePlatform, useKeyboardShortcuts } from './hooks/usePlatform';
+import { useKeyboardShortcuts } from './hooks/usePlatform';
 import { CentopeiaDatabase } from './storage/Database';
-import { secureStorage } from './storage/SecureStorage';
+import { emitTerminalCommand, onProfileUpdated, emitProfileUpdated } from './ui/terminal/terminalEvents';
 import { BookOpen, Target, BarChart3, Code, ArrowLeft } from 'lucide-react';
 
 const db = CentopeiaDatabase.getInstance();
@@ -37,6 +37,33 @@ function App() {
     currentStreak: 1,
   });
 
+  const applyProgressToPath = (
+    path: LearningPath,
+    progress: { moduleId: string; status: 'locked' | 'available' | 'in_progress' | 'completed' }[],
+    unlockNext: boolean = false
+  ): LearningPath => {
+    const progressMap = new Map(progress.map(p => [p.moduleId, p.status]));
+    const updatedSkills = path.skills.map(skill => {
+      const updatedModules = skill.modules.map((module) => {
+        const status = progressMap.get(module.id);
+        return status ? { ...module, status } : module;
+      });
+
+      if (unlockNext) {
+        for (let i = 0; i < updatedModules.length - 1; i++) {
+          if (updatedModules[i].status === 'completed' && updatedModules[i + 1].status === 'locked') {
+            updatedModules[i + 1] = { ...updatedModules[i + 1], status: 'available' };
+            break;
+          }
+        }
+      }
+
+      return { ...skill, modules: updatedModules };
+    });
+
+    return { ...path, skills: updatedSkills };
+  };
+
   // Load stats from database
   useEffect(() => {
     const loadStats = async () => {
@@ -55,6 +82,20 @@ function App() {
     loadStats();
   }, []);
 
+  const refreshStats = async () => {
+    try {
+      const completed = await db.getCompletedModulesCount();
+      const totalTime = await db.getTotalStudyTime();
+      setStats({
+        completedModules: completed,
+        totalStudyTime: totalTime,
+        currentStreak: 1,
+      });
+    } catch (error) {
+      console.error('[App] Error refreshing stats:', error);
+    }
+  };
+
   // Initialize app
   useEffect(() => {
     let isCancelled = false;
@@ -63,10 +104,18 @@ function App() {
       try {
         await db.initialize();
         
-        const profile = await db.getUserProfile();
+        const profile = await db.getOrCreateUserProfile();
         if (!isCancelled) {
           if (profile?.roleFocus && profile.roleFocus !== 'exploring') {
-            const savedPath = getPathById(profile.roleFocus);
+            const roleToPath: Record<UserProfile['roleFocus'], LearningPath['id'] | null> = {
+              qa_tester: 'qa',
+              developer: 'developer',
+              analyst: 'data-analyst',
+              exploring: null,
+            };
+            const pathId = roleToPath[profile.roleFocus];
+            const rawPath = pathId ? getPathById(pathId) : undefined;
+            const savedPath = rawPath ? applyProgressToPath(rawPath, await db.getPathProgress(rawPath.id)) : undefined;
             if (savedPath) {
               setSelectedPath(savedPath);
             }
@@ -90,6 +139,30 @@ function App() {
     };
   }, []);
 
+  // React to profile updates from terminal commands
+  useEffect(() => {
+    const unsubscribe = onProfileUpdated(async (event) => {
+      try {
+        const profile = await db.getOrCreateUserProfile();
+        setUserProfile(profile);
+
+        const roleToPath: Record<UserProfile['roleFocus'], LearningPath['id'] | null> = {
+          qa_tester: 'qa',
+          developer: 'developer',
+          analyst: 'data-analyst',
+          exploring: null,
+        };
+        const pathId = event.pathId || roleToPath[profile.roleFocus];
+        const rawPath = pathId ? getPathById(pathId) : undefined;
+        const path = rawPath ? applyProgressToPath(rawPath, await db.getPathProgress(rawPath.id)) : undefined;
+        setSelectedPath(path || null);
+      } catch (error) {
+        console.error('[App] Error syncing profile:', error);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     'ctrl+1': () => setCurrentView('terminal'),
@@ -104,33 +177,76 @@ function App() {
   });
 
   const handleSelectPath = async (path: LearningPath) => {
-    setSelectedPath(path);
+    const progress = await db.getPathProgress(path.id);
+    setSelectedPath(applyProgressToPath(path, progress));
     
-    if (userProfile) {
-      const roleMap: Record<string, 'qa_tester' | 'analyst' | 'developer'> = {
-        'qa': 'qa_tester',
-        'developer': 'developer',
-        'data-analyst': 'analyst',
-      };
-      userProfile.roleFocus = roleMap[path.id] || 'developer';
-      await db.setUserProfile(userProfile);
-    }
+    const profile = userProfile ?? await db.getOrCreateUserProfile();
+    const roleMap: Record<string, 'qa_tester' | 'analyst' | 'developer'> = {
+      'qa': 'qa_tester',
+      'developer': 'developer',
+      'data-analyst': 'analyst',
+    };
+    const nextRole = roleMap[path.id] || 'developer';
+    await db.setUserProfile({ ...profile, roleFocus: nextRole });
+    setUserProfile({ ...profile, roleFocus: nextRole });
+    emitProfileUpdated({ roleFocus: nextRole, pathId: path.id });
     
     setCurrentView('learn');
   };
 
   const handleStartModule = (module: { id: string; title: string }) => {
     console.debug('[App] Módulo iniciado:', module.id);
+    setCurrentView('learn');
+    void markModuleInProgress(module.id);
+    emitTerminalCommand(`/module ${module.id}`);
   };
 
   const handleCommand = (command: string) => {
     console.log('[App] Quick action command:', command);
-    // TODO: Implement command routing to terminal
+    setCurrentView('terminal');
+    emitTerminalCommand(command);
   };
 
   const handleStartSprint = (minutes: number) => {
     console.log('[App] Start sprint:', minutes, 'minutes');
-    // TODO: Implement sprint timer
+    setCurrentView('terminal');
+    emitTerminalCommand(`/focus ${minutes}`);
+  };
+
+  const markModuleInProgress = async (moduleId: string) => {
+    const found = findModuleById(moduleId);
+    if (!found) return;
+    const { pathId, skillId, module } = found;
+    await db.saveModuleProgress({
+      moduleId: module.id,
+      skillId,
+      pathId,
+      status: 'in_progress',
+      startedAt: new Date().toISOString(),
+    });
+    if (selectedPath && selectedPath.id === pathId) {
+      const progress = await db.getPathProgress(pathId);
+      setSelectedPath(applyProgressToPath(selectedPath, progress));
+    }
+  };
+
+  const markModuleCompleted = async (moduleId: string) => {
+    const found = findModuleById(moduleId);
+    if (!found) return;
+    const { pathId, skillId, module } = found;
+    await db.saveModuleProgress({
+      moduleId: module.id,
+      skillId,
+      pathId,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      timeSpentMinutes: module.duration,
+    });
+    if (selectedPath && selectedPath.id === pathId) {
+      const progress = await db.getPathProgress(pathId);
+      setSelectedPath(applyProgressToPath(selectedPath, progress, true));
+    }
+    await refreshStats();
   };
 
   // Get next module for RightPanel
@@ -189,6 +305,7 @@ function App() {
             <LearningPathView
               path={selectedPath}
               onStartModule={handleStartModule}
+              onCompleteModule={(module) => void markModuleCompleted(module.id)}
             />
           </Suspense>
         );
@@ -244,7 +361,13 @@ function App() {
         <header className="bg-hacker-bgSecondary border-b border-hacker-border px-4 lg:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 lg:gap-4">
-              <h1 className="font-bold text-hacker-primary text-lg lg:text-xl">CENTOPEIA</h1>
+              <h1 
+                className="font-bold text-hacker-primary text-lg lg:text-xl cursor-pointer hover:text-hacker-primaryDim transition-colors"
+                onClick={() => setCurrentView('terminal')}
+                title="Ir al inicio"
+              >
+                CENTOPEIA
+              </h1>
               {isDesktop && (
                 <>
                   <span className="text-hacker-textDim">|</span>
@@ -292,7 +415,7 @@ function App() {
               totalStudyTime={stats.totalStudyTime}
               currentStreak={stats.currentStreak}
               onStartSprint={handleStartSprint}
-              onQuickAction={(action) => handleCommand(`/${action}`)}
+              onQuickAction={(command) => handleCommand(command)}
             />
           )}
           

@@ -1,45 +1,30 @@
 import type { CommandHandler } from './index';
 
 export const helpCommand: CommandHandler = async () => {
-  return `
-╔══════════════════════════════════════════════════════════════╗
-║                    COMANDOS DISPONIBLES                      ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-║  📚 APRENDIZAJE                                              ║
-║  [green]/learn [tema][/green]     - Inicia aprendizaje (sql, python, js)  ║
-║  [green]/practice [tema][/green] - Ejercicios prácticos con código      ║
-║  [green]/quiz [tema][/green]     - Quiz de conocimientos (5 preguntas)  ║
-║  [green]/role [qa/dev/data][/green] - Cambia tu rol principal          ║
-║                                                              ║
-║  🎯 FOCUS & PRODUCTIVIDAD (AUDHD)                           ║
-║  [green]/focus [min][/green]      - Sprint de concentración (def: 15)   ║
-║  [green]/stop[/green]             - Detiene el sprint actual           ║
-║  [green]/micro [tarea][/green]    - Modo anti-parálisis                 ║
-║                                                              ║
-║  ⚙️  CONFIGURACIÓN                                           ║
-║  [green]/home[/green]              - Volver al inicio                  ║
-║  [green]/config apikey [key][/green] - Configurar API de Groq          ║
-║  [green]/config pomodoro 15[/green]  - Minutos de trabajo              ║
-║  [green]/config break 5[/green]      - Minutos de descanso             ║
-║  [green]/stats[/green]              - Tus estadísticas                 ║
-║  [green]/unlock[/green]            - Desbloquea input si se atasca    ║
-║                                                              ║
-║  ─────────────────────────────────────────────────────────  ║
-║  COMANDOS DIRECTOS (sin /):                                  ║
-║  Escribe cualquier pregunta y el tutor responderá            ║
-║  Ejemplo: "¿qué es SQL?" o "explícame joins"                 ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
+  return `[green]COMANDOS DISPONIBLES[/green]
 
-[green]💡 TIP AUDHD:[/green] Si te bloqueas, usa:
-[micro] /micro quiero aprender X pero no sé por dónde empezar
+📚 APRENDIZAJE
+  [green]/learn [tema][/green]      - Inicia aprendizaje (sql, python, js)
+  [green]/practice python[/green]  - Ejercicios prácticos con código
+  [green]/quiz [tema][/green]      - Quiz de conocimientos
+  [green]/role [qa/dev/data][/green] - Cambia tu rol principal
+  [green]/module [id][/green]       - Ver contenido de un módulo
 
-[green]💡 TIP PRÁCTICA:[/green] Escribe /practice python para ejercicios:
-- Ejecutas código real en el navegador
-- Feedback inmediato
-- Pistas cuando te atascas
+🎯 FOCUS & PRODUCTIVIDAD
+  [green]/focus [min][/green]       - Sprint de concentración
+  [green]/stop[/green]              - Detiene el sprint
+  [green]/micro [tarea][/green]     - Modo anti-parálisis
 
-[dim]Modelo:[/dim] Kimi K2 (Moonshot AI) via Groq
-`;
+⚙️ CONFIGURACIÓN
+  [green]/home[/green]              - Volver al inicio
+  [green]/config apikey [key][/green] - Configurar API
+  [green]/config debug[/green]       - Verificar estado API key
+  [green]/stats[/green]             - Tus estadísticas
+  [green]/unlock[/green]            - Desbloquea input
+
+COMANDOS DIRECTOS (sin /):
+  Escribe cualquier pregunta y responderé
+  Ejemplo: "¿qué es SQL?"
+
+[green]💡 Tip:[/green] Usa /practice python para ejercicios interactivos`;
 };

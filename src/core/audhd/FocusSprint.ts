@@ -1,7 +1,52 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Preferences } from '@capacitor/preferences';
-import { App } from '@capacitor/app';
+
+// Lazy load Capacitor plugins only in native environments
+const isNative = typeof window !== 'undefined' && 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  !!(window as any).Capacitor?.isNativePlatform?.();
+
+type LocalNotificationsLike = {
+  requestPermissions: (..._args: unknown[]) => Promise<unknown>;
+  addListener: (..._args: unknown[]) => Promise<{ remove: () => void }>;
+  schedule: (..._args: unknown[]) => Promise<unknown>;
+};
+
+// Placeholders for non-native environments
+const noopNotifications: LocalNotificationsLike = { 
+  requestPermissions: async (..._args: unknown[]) => ({ granted: false }),
+  addListener: async (..._args: unknown[]) => ({ remove: () => {} }),
+  schedule: async (..._args: unknown[]) => {},
+};
+
+const noopPreferences = {
+  get: async (..._args: unknown[]) => ({ value: null }),
+  set: async (..._args: unknown[]) => {},
+  remove: async (..._args: unknown[]) => {},
+};
+
+const noopApp = {
+  addListener: async (..._args: unknown[]) => ({ remove: () => {} }),
+};
+
+let LocalNotifications: LocalNotificationsLike = noopNotifications;
+let Preferences: typeof noopPreferences = noopPreferences;
+let App: typeof noopApp = noopApp;
+
+// Initialize plugins only in native environment
+if (isNative) {
+  try {
+    const notifications = await import('@capacitor/local-notifications');
+    LocalNotifications = (notifications.LocalNotifications || notifications) as typeof noopNotifications;
+    
+    const prefs = await import('@capacitor/preferences');
+    Preferences = (prefs.Preferences || prefs) as typeof noopPreferences;
+    
+    const app = await import('@capacitor/app');
+    App = (app.App || app) as typeof noopApp;
+  } catch (e) {
+    console.warn('[FocusSprint] Capacitor plugins not available:', e);
+  }
+}
 
 const SPRINT_STATE_KEY = 'focus_sprint_active_state';
 

@@ -1,24 +1,61 @@
 import { Preferences } from '@capacitor/preferences';
-import { generateId } from '../utils/idGenerator';
 import type { TerminalMessage, UserProfile, KnowledgeState, StudySession } from '../types';
 
-// Simple storage wrapper using Capacitor Preferences
+// Check if Preferences is available (native or web polyfill)
+const isPreferencesAvailable = typeof window !== 'undefined' && 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  !!(window as any).Capacitor?.Preferences;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StoragePlugin = {
+  set: (opts: { key: string; value: string }) => Promise<void>;
+  get: (opts: { key: string }) => Promise<{ value: string | null }>;
+  remove: (opts: { key: string }) => Promise<void>;
+  keys: () => Promise<{ keys: string[] }>;
+  clear: () => Promise<void>;
+};
+
+class LocalStorageDB implements StoragePlugin {
+  async set(opts: { key: string; value: string }): Promise<void> {
+    localStorage.setItem(opts.key, opts.value);
+  }
+
+  async get(opts: { key: string }): Promise<{ value: string | null }> {
+    return { value: localStorage.getItem(opts.key) };
+  }
+
+  async remove(opts: { key: string }): Promise<void> {
+    localStorage.removeItem(opts.key);
+  }
+
+  async keys(): Promise<{ keys: string[] }> {
+    return { keys: Object.keys(localStorage) as string[] };
+  }
+
+  async clear(): Promise<void> {
+    localStorage.clear();
+  }
+}
+
+const storage: StoragePlugin = isPreferencesAvailable ? Preferences : new LocalStorageDB();
+
+// Simple storage wrapper using Capacitor Preferences or localStorage fallback
 // Works on Web, iOS, and Android
 
 export class Database {
   async initialize(): Promise<void> {
-    // Capacitor Preferences no necesita inicialización
+    // Storage no necesita inicialización
   }
 
   async set<T>(key: string, value: T): Promise<void> {
-    await Preferences.set({
+    await storage.set({
       key,
       value: JSON.stringify(value),
     });
   }
 
   async get<T>(key: string, defaultValue?: T): Promise<T | null> {
-    const { value } = await Preferences.get({ key });
+    const { value } = await storage.get({ key });
     if (!value) return defaultValue ?? null;
     try {
       return JSON.parse(value) as T;
@@ -29,16 +66,16 @@ export class Database {
   }
 
   async remove(key: string): Promise<void> {
-    await Preferences.remove({ key });
+    await storage.remove({ key });
   }
 
   async keys(): Promise<string[]> {
-    const { keys } = await Preferences.keys();
+    const { keys } = await storage.keys();
     return keys;
   }
 
   async clear(): Promise<void> {
-    await Preferences.clear();
+    await storage.clear();
   }
 }
 
@@ -59,7 +96,46 @@ export class CentopeiaDatabase extends Database {
   }
 
   async setUserProfile(profile: UserProfile): Promise<void> {
-    return this.set('user_profile', profile);
+    const updatedProfile: UserProfile = {
+      ...profile,
+      updatedAt: new Date().toISOString(),
+    };
+    return this.set('user_profile', updatedProfile);
+  }
+
+  async getOrCreateUserProfile(): Promise<UserProfile> {
+    const existing = await this.getUserProfile();
+    if (existing) return existing;
+
+    const now = new Date().toISOString();
+    const newProfile: UserProfile = {
+      id: Date.now(),
+      name: 'User',
+      roleFocus: 'exploring',
+      audhdConfig: {
+        pomodoroWorkMinutes: 15,
+        pomodoroBreakMinutes: 5,
+        prefersBodyDoubling: false,
+        rsdSensitivity: 'medium',
+        hyperfocusMode: 'channel',
+        sensoryPreferences: {
+          theme: 'hacker',
+          fontSize: 14,
+          animations: 'full',
+          sounds: true,
+        },
+      },
+      customPrompts: {
+        systemPersonality: '',
+        feedbackStyle: '',
+        motivationStyle: '',
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.setUserProfile(newProfile);
+    return newProfile;
   }
 
   // Conversations

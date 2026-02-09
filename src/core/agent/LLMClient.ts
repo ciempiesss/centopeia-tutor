@@ -92,9 +92,11 @@ export class LLMClient {
 
   constructor(config: LLMConfig) {
     this.apiKey = config.apiKey;
-    this.model = config.model || LLMClient.MODELS.KIMI_K2;
+    // Usar modelo más estable por defecto
+    this.model = config.model || LLMClient.MODELS.LLAMA_33_70B;
     this.temperature = config.temperature ?? 0.7;
-    this.maxTokens = config.maxTokens ?? 4096;
+    this.maxTokens = config.maxTokens ?? 2048;
+    console.log('[LLMClient] Inicializado con modelo:', this.model);
   }
 
   /**
@@ -150,6 +152,11 @@ export class LLMClient {
     }
 
     try {
+      console.log('[LLMClient] Enviando request:', {
+        model: this.model,
+        messageCount: groqMessages.length,
+        lastMessage: groqMessages[groqMessages.length - 1]?.content.substring(0, 50) + '...'
+      });
       const result = await this.makeRequest(groqMessages);
       this.rateLimiter.recordSuccess();
       return result;
@@ -298,7 +305,17 @@ export class LLMClient {
       }
 
       const data: GroqResponse = await response.json();
-      return data.choices[0]?.message?.content || 'Sin respuesta del modelo';
+      console.log('[LLMClient] Respuesta recibida:', {
+        model: data.id,
+        tokens: data.usage,
+        finishReason: data.choices[0]?.finish_reason,
+        contentLength: data.choices[0]?.message?.content?.length
+      });
+      const content = data.choices[0]?.message?.content;
+      if (!content || content.trim().length === 0) {
+        return '[Error: Respuesta vacía del modelo]';
+      }
+      return content;
     } catch (error) {
       throw new Error(`Error de comunicación con el tutor: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
@@ -307,9 +324,12 @@ export class LLMClient {
   /**
    * Formatea mensajes para Groq
    */
-  private formatMessages(messages: TerminalMessage[]): { role: 'user' | 'assistant'; content: string }[] {
-    return messages.map(m => ({
-      role: m.role as 'user' | 'assistant',
+  private formatMessages(messages: TerminalMessage[]): { role: 'user' | 'assistant' | 'system'; content: string }[] {
+    // Incluir system adicional (contexto), pero nunca tool
+    const validMessages = messages.filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'system');
+    console.log('[LLMClient] Mensajes formateados:', validMessages.length);
+    return validMessages.map(m => ({
+      role: m.role as 'user' | 'assistant' | 'system',
       content: m.content,
     }));
   }

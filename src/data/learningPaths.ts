@@ -901,3 +901,18 @@ export function getNextModule(path: LearningPath): MicroModule | null {
   }
   return null;
 }
+
+export function findModuleById(
+  moduleId: string
+): { pathId: LearningPath['id']; skillId: string; module: MicroModule } | null {
+  for (const path of Object.values(LEARNING_PATHS)) {
+    for (const skill of path.skills) {
+      for (const module of skill.modules) {
+        if (module.id === moduleId) {
+          return { pathId: path.id, skillId: skill.id, module };
+        }
+      }
+    }
+  }
+  return null;
+}

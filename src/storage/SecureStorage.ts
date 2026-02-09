@@ -3,32 +3,31 @@ import { Preferences } from '@capacitor/preferences';
 /**
  * Secure Storage for sensitive data
  * 
- * NOTE: This is a best-effort implementation. On web, Preferences uses
- * localStorage which is not truly secure. For production mobile apps,
- * consider using @capacitor-community/sqlite with encryption or
- * a dedicated secure storage plugin.
+ * Hybrid implementation:
+ * - Web: Uses localStorage with simple XOR obfuscation (reliable)
+ * - Mobile: Uses Capacitor Preferences (native)
  * 
- * Current implementation:
- * - Web: Uses localStorage with simple XOR obfuscation
- * - Android/iOS: Uses native SharedPreferences/UserDefaults
- * 
- * Future: Migrate to @capacitor-community/secure-storage or similar
+ * NOTE: This is a best-effort implementation. For production apps
+ * requiring high security, use @capacitor-community/secure-storage
  */
 
 const API_KEY_PREFIX = 'centopeia_key_';
+const LOCAL_STORAGE_KEY = 'centopeia_secure_storage';
+
+// Detect if running in Capacitor native app
+function isNative(): boolean {
+  return typeof (window as any).Capacitor !== 'undefined' && 
+         (window as any).Capacitor?.isNativePlatform?.() === true;
+}
 
 // Simple obfuscation - NOT encryption, just prevents casual inspection
-// In production, use proper encryption or native secure storage
-// NOTE: Key is derived from device/user fingerprint for basic obfuscation
 function getObfuscationKey(): string {
-  // Derive key from user agent + screen size + timezone for basic device fingerprinting
-  // This makes the obfuscation key unique per device/session without hardcoding
   const fingerprint = `${navigator.userAgent}:${screen.width}x${screen.height}:${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
   let hash = 0;
   for (let i = 0; i < fingerprint.length; i++) {
     const char = fingerprint.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   return `centopeia_${Math.abs(hash).toString(36)}`;
 }
@@ -58,8 +57,61 @@ function deobfuscate(obfuscated: string): string | null {
   }
 }
 
+// Web storage using localStorage (more reliable for web)
+class WebSecureStorage {
+  async set(key: string, value: string): Promise<void> {
+    const obfuscated = obfuscate(value);
+    localStorage.setItem(`${API_KEY_PREFIX}${key}`, obfuscated);
+  }
+
+  async get(key: string): Promise<string | null> {
+    const value = localStorage.getItem(`${API_KEY_PREFIX}${key}`);
+    if (!value) return null;
+    return deobfuscate(value);
+  }
+
+  async remove(key: string): Promise<void> {
+    localStorage.removeItem(`${API_KEY_PREFIX}${key}`);
+  }
+
+  async has(key: string): Promise<boolean> {
+    return localStorage.getItem(`${API_KEY_PREFIX}${key}`) !== null;
+  }
+}
+
+// Native storage using Capacitor Preferences
+class NativeSecureStorage {
+  async set(key: string, value: string): Promise<void> {
+    const obfuscated = obfuscate(value);
+    await Preferences.set({
+      key: `${API_KEY_PREFIX}${key}`,
+      value: obfuscated,
+    });
+  }
+
+  async get(key: string): Promise<string | null> {
+    const { value } = await Preferences.get({ key: `${API_KEY_PREFIX}${key}` });
+    if (!value) return null;
+    return deobfuscate(value);
+  }
+
+  async remove(key: string): Promise<void> {
+    await Preferences.remove({ key: `${API_KEY_PREFIX}${key}` });
+  }
+
+  async has(key: string): Promise<boolean> {
+    const { value } = await Preferences.get({ key: `${API_KEY_PREFIX}${key}` });
+    return value !== null;
+  }
+}
+
 export class SecureStorage {
   private static instance: SecureStorage;
+  private storage: WebSecureStorage | NativeSecureStorage;
+
+  private constructor() {
+    this.storage = isNative() ? new NativeSecureStorage() : new WebSecureStorage();
+  }
 
   static getInstance(): SecureStorage {
     if (!SecureStorage.instance) {
@@ -70,23 +122,21 @@ export class SecureStorage {
 
   // Store API key securely
   async setApiKey(apiKey: string): Promise<void> {
-    const obfuscated = obfuscate(apiKey);
-    await Preferences.set({
-      key: `${API_KEY_PREFIX}groq`,
-      value: obfuscated,
-    });
+    await this.storage.set('groq', apiKey);
+    console.log('[SecureStorage] API key saved successfully');
   }
 
   // Retrieve API key
   async getApiKey(): Promise<string | null> {
-    const { value } = await Preferences.get({ key: `${API_KEY_PREFIX}groq` });
-    if (!value) return null;
-    return deobfuscate(value);
+    const key = await this.storage.get('groq');
+    console.log('[SecureStorage] API key retrieved:', key ? 'Found' : 'Not found');
+    return key;
   }
 
   // Remove API key
   async removeApiKey(): Promise<void> {
-    await Preferences.remove({ key: `${API_KEY_PREFIX}groq` });
+    await this.storage.remove('groq');
+    console.log('[SecureStorage] API key removed');
   }
 
   // Check if API key exists
@@ -97,26 +147,30 @@ export class SecureStorage {
 
   // Generic secure setter with obfuscation
   async setSecure(key: string, value: string): Promise<void> {
-    const obfuscated = obfuscate(value);
-    await Preferences.set({
-      key: `${API_KEY_PREFIX}${key}`,
-      value: obfuscated,
-    });
+    await this.storage.set(key, value);
   }
 
   // Generic secure getter
   async getSecure(key: string): Promise<string | null> {
-    const { value } = await Preferences.get({ key: `${API_KEY_PREFIX}${key}` });
-    if (!value) return null;
-    return deobfuscate(value);
+    return await this.storage.get(key);
   }
 
   // Clear all secure data
   async clearAll(): Promise<void> {
-    const { keys } = await Preferences.keys();
-    const secureKeys = keys.filter(k => k.startsWith(API_KEY_PREFIX));
-    for (const key of secureKeys) {
-      await Preferences.remove({ key });
+    if (isNative()) {
+      const { keys } = await Preferences.keys();
+      const secureKeys = keys.filter(k => k.startsWith(API_KEY_PREFIX));
+      for (const key of secureKeys) {
+        await Preferences.remove({ key });
+      }
+    } else {
+      // Clear localStorage keys with our prefix
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(API_KEY_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      }
     }
   }
 }

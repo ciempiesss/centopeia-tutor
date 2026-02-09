@@ -1,21 +1,7 @@
-import React from 'react';
+export const WELCOME_MESSAGE = `[green]Centopeia Tutor[/green] - Tu asistente técnico personal.
 
-export const WELCOME_MESSAGE = `╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║   ██████╗███████╗███╗   ██╗████████╗ ██████╗ ██████╗ ███████╗██╗ █████╗   ║
-║  ██╔════╝██╔════╝████╗  ██║╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝██║██╔══██╗  ║
-║  ██║     █████╗  ██╔██╗ ██║   ██║   ██║   ██║██████╔╝█████╗  ██║███████║  ║
-║  ██║     ██╔══╝  ██║╚██╗██║   ██║   ██║   ██║██╔═══╝ ██╔══╝  ██║██╔══██║  ║
-║  ╚██████╗███████╗██║ ╚████║   ██║   ╚██████╔╝██║     ███████╗██║██║  ██║  ║
-║   ╚═════╝╚══════╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝     ╚══════╝╚═╝╚═╝  ╚═╝  ║
-║                                                              ║
-║              TUTOR DE PROGRAMACIÓN AUDHD-OPTIMIZED           ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-
-Bienvenido a Centopeia. Tu tutor técnico personal.
-Escribe /help para ver comandos disponibles.
-
-[dim]Consejo AUDHD:[/dim] Usa /focus 15 para empezar un sprint de 15 minutos.
-[dim]Práctica:[/dim] Escribe /practice python para ejercicios interactivos.
-`;
+Comandos útiles:
+  /help           - Ver todos los comandos
+  /config apikey  - Configurar API de Groq
+  /practice       - Ejercicios prácticos
+  /interview      - Simulador de entrevistas`;

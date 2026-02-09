@@ -23,8 +23,6 @@ export const practiceCommand: CommandHandler = async (args, context) => {
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
 ║  [green]/practice python[/green]     - Ejercicios de Python         ║
-║  [green]/practice sql[/green]        - Ejercicios de SQL            ║
-║  [green]/practice js[/green]         - Ejercicios de JavaScript     ║
 ║                                                              ║
 ║  ─────────────────────────────────────────────────────────  ║
 ║  Modo interactivo:                                            ║
@@ -43,7 +41,7 @@ export const practiceCommand: CommandHandler = async (args, context) => {
   const exercises = EXERCISE_LIBRARY[topic];
 
   if (!exercises || exercises.length === 0) {
-    return `[red]Error:[/red] No hay ejercicios disponibles para "${topic}".\n\nTópicos disponibles: python, sql`;
+    return `[red]Error:[/red] No hay ejercicios disponibles para "${topic}".\n\nTópicos disponibles: python`;
   }
 
   // Get or create session exercise state
@@ -137,6 +135,11 @@ export const isHintRequest = (input: string): boolean => {
   return hintWords.some(word => input.toLowerCase().includes(word));
 };
 
+// Check if there's an active exercise
+export const hasActiveExercise = (sessionId: string): boolean => {
+  return activeExercises.has(sessionId);
+};
+
 // Get hint for current exercise
 export const getHint = async (sessionId: string): Promise<string> => {
   const exerciseState = activeExercises.get(sessionId);
@@ -154,3 +157,6 @@ export const getHint = async (sessionId: string): Promise<string> => {
   const hint = codeExecutor.getHint(exercise, exerciseState.attemptCount);
   return `💡 [yellow]Pista:[/yellow] ${hint}`;
 };
+
+
+

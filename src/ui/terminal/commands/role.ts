@@ -1,4 +1,6 @@
 import type { CommandHandler } from './index';
+import { CentopeiaDatabase } from '../../../storage/Database';
+import { emitProfileUpdated } from '../terminalEvents';
 
 const roles = {
   qa: {
@@ -45,6 +47,28 @@ export const roleCommand: CommandHandler = async (args) => {
     return `[red]Error:[/red] Rol no válido. Opciones: qa, dev, data`;
   }
 
+  const db = CentopeiaDatabase.getInstance();
+  const profile = await db.getOrCreateUserProfile();
+
+  const roleFocusMap: Record<string, 'qa_tester' | 'developer' | 'analyst'> = {
+    qa: 'qa_tester',
+    dev: 'developer',
+    data: 'analyst',
+  };
+  const pathIdMap: Record<string, 'qa' | 'developer' | 'data-analyst'> = {
+    qa: 'qa',
+    dev: 'developer',
+    data: 'data-analyst',
+  };
+
+  const nextRoleFocus = roleFocusMap[roleKey];
+  await db.setUserProfile({
+    ...profile,
+    roleFocus: nextRoleFocus,
+  });
+
+  emitProfileUpdated({ roleFocus: nextRoleFocus, pathId: pathIdMap[roleKey] });
+
   return `
 ✅ [green]ROL SELECCIONADO:[/green] ${role.name}
 
@@ -56,3 +80,4 @@ ${role.skills.map(s => `  • ${s}`).join('\n')}
 [dim]Puedes cambiar de rol en cualquier momento con /role[/dim]
 `;
 };
+

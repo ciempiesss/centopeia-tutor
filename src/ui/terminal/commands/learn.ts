@@ -42,6 +42,10 @@ export const learnCommand: CommandHandler = async (args) => {
     return `[red]Error:[/red] Tema no encontrado. Usa /learn para ver opciones.`;
   }
 
+  const nextStep = topicKey === 'python'
+    ? '/practice python'
+    : `/quiz ${topicKey}`;
+
   return `
 📚 [green]INICIANDO:[/green] ${topic.name}
 
@@ -50,7 +54,6 @@ ${topic.description}
 Módulos disponibles:
 ${topic.modules.map((m, i) => `  ${i + 1}. ${m}`).join('\n')}
 
-[dim]Para empezar el primer módulo, escribe "empezar"[/dim]
-[dim]Para ver un roadmap completo, escribe "roadmap"[/dim]
+[dim]Siguiente paso recomendado: ${nextStep}[/dim]
 `;
 };

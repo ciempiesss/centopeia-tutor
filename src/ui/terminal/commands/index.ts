@@ -8,6 +8,7 @@ import { microCommand } from '../../../core/audhd/AntiParalysis';
 import { practiceCommand } from './practice';
 import { quizCommand } from './quiz';
 import { randomCommand } from './random';
+import { moduleCommand } from './module';
 
 // Wrap command handlers with error handling
 const wrapCommand = (
@@ -51,6 +52,8 @@ export const commandRegistry: CommandRegistry = {
   '/stop': wrapCommand(async () => 'Sprint detenido.', '/stop'),
   '/role': wrapCommand(roleCommand, '/role'),
   '/rol': wrapCommand(roleCommand, '/rol'),
+  '/paths': wrapCommand(roleCommand, '/paths'),
+  '/rutas': wrapCommand(roleCommand, '/rutas'),
   '/stats': wrapCommand(statsCommand, '/stats'),
   '/estadisticas': wrapCommand(statsCommand, '/estadisticas'),
   '/learn': wrapCommand(learnCommand, '/learn'),
@@ -65,6 +68,7 @@ export const commandRegistry: CommandRegistry = {
   '/paso': wrapCommand(microCommand, '/paso'),
   '/random': wrapCommand(randomCommand, '/random'),
   '/aleatorio': wrapCommand(randomCommand, '/aleatorio'),
+  '/module': wrapCommand(moduleCommand, '/module'),
   '/hint': wrapCommand(async () => 'Usa el comando /practice para ejercicios con pistas incluidas.', '/hint'),
   '/pista': wrapCommand(async () => 'Usa el comando /practice para ejercicios con pistas incluidas.', '/pista'),
 };

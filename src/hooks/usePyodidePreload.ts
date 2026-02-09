@@ -14,6 +14,11 @@ export function usePyodidePreload(delayMs = 2000): UsePyodidePreloadReturn {
   const hasStartedRef = useRef(false);
 
   useEffect(() => {
+    // Skip preload in development mode for faster loading
+    if (import.meta.env.DEV) {
+      return;
+    }
+
     // Prevent double initialization
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;

@@ -12,6 +12,7 @@ import { DesktopSplitPane } from './AdaptiveLayout';
 interface LearningPathViewProps {
   path: LearningPath;
   onStartModule: (module: MicroModule) => void;
+  onCompleteModule: (module: MicroModule) => void;
 }
 
 // Status badge component
@@ -221,7 +222,7 @@ const SkillCard = memo(function SkillCard({
 });
 
 // Vista móvil: Lista vertical
-function MobilePathView({ path, onStartModule }: LearningPathViewProps) {
+function MobilePathView({ path, onStartModule, onCompleteModule }: LearningPathViewProps) {
   const [expandedSkill, setExpandedSkill] = useState<string | null>(
     path.skills.find(s => s.status !== 'locked')?.id || null
   );
@@ -304,7 +305,7 @@ function MobilePathView({ path, onStartModule }: LearningPathViewProps) {
 }
 
 // Vista desktop: Split pane
-function DesktopPathView({ path, onStartModule }: LearningPathViewProps) {
+function DesktopPathView({ path, onStartModule, onCompleteModule }: LearningPathViewProps) {
   const [selectedModule, setSelectedModule] = useState<MicroModule | null>(null);
   const [expandedSkills, setExpandedSkills] = useState<Set<string>>(
     new Set([path.skills.find(s => s.status !== 'locked')?.id || ''])
@@ -396,6 +397,8 @@ function DesktopPathView({ path, onStartModule }: LearningPathViewProps) {
       module={selectedModule} 
       pathColor={path.color}
       onClose={() => setSelectedModule(null)}
+      onStartModule={onStartModule}
+      onCompleteModule={onCompleteModule}
     />
   ) : (
     <div className="h-full flex items-center justify-center p-8">
@@ -425,11 +428,15 @@ function DesktopPathView({ path, onStartModule }: LearningPathViewProps) {
 function ModuleDetail({ 
   module, 
   pathColor,
-  onClose 
+  onClose,
+  onStartModule,
+  onCompleteModule,
 }: { 
   module: MicroModule;
   pathColor: string;
   onClose: () => void;
+  onStartModule: (module: MicroModule) => void;
+  onCompleteModule: (module: MicroModule) => void;
 }) {
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -502,6 +509,7 @@ function ModuleDetail({
         {/* Start button */}
         {module.status !== 'locked' && (
           <button
+            onClick={() => onStartModule(module)}
             className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2
                      transition-all motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]
                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white
@@ -513,6 +521,17 @@ function ModuleDetail({
           >
             <Play className="w-6 h-6" />
             {module.status === 'completed' ? 'Revisar nuevamente' : 'Comenzar módulo'}
+          </button>
+        )}
+
+        {module.status !== 'completed' && module.status !== 'locked' && (
+          <button
+            onClick={() => onCompleteModule(module)}
+            className="w-full mt-3 py-3 rounded-xl font-bold text-sm
+                     border border-hacker-border text-hacker-text
+                     hover:bg-hacker-bgTertiary transition-colors"
+          >
+            Marcar como completado
           </button>
         )}
       </div>

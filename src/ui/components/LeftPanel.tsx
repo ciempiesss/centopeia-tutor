@@ -78,9 +78,9 @@ export function LeftPanel({
 
         <div className="space-y-2">
           {[
-            { label: 'Practicar Python', action: 'practice-python' },
-            { label: 'Ver Quiz', action: 'view-quiz' },
-            { label: 'Random Tip', action: 'random-tip' },
+            { label: 'Practicar Python', action: '/practice python' },
+            { label: 'Ver Quiz', action: '/quiz' },
+            { label: 'Tema al Azar', action: '/random' },
           ].map(({ label, action }) => (
             <button
               key={action}
